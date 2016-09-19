@@ -1,0 +1,13 @@
+$borderRadius:	1px;
+
+//The placeholder
+.multiSelectJs-placeholder {
+	display: inline-block;
+	height: 40px;
+	width: 100%;
+	border: 1px solid #CCC;
+	-webkit-border-radius: $borderRadius;
+	-moz-border-radius: $borderRadius;
+	border-radius: $borderRadius;
+	background-color: #FFF;
+}

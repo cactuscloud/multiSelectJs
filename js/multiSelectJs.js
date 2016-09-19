@@ -16,9 +16,20 @@
  *
  *	Polyfills:		The following polyfills are included with this file:
  *						- Array.isArray(x) : Boolean
+ *
+ *	Options:
+ *					duplicateInput
+ *						- A text or hidden input field to store the selected values in.  This is useful for
+ *						integration with other frameworks, such as SalesForce.  This can be either a
+ *						text ID or a reference to an actual text or hidden element.
+ *					data
+ *						- Any preloaded data to insert into the multiSelectJs
+ *
+ *	Attributes (on the initial element):
+ *					data-value
+ *						- The multiSelectJs' initial value  NOT IMPLEMENTED
+ *
  */
-
-
 function multiSelectJs(el, options) {
 	//Initialization variables
 	this.initialized = false;
@@ -37,6 +48,9 @@ function multiSelectJs(el, options) {
 	this.selections = [];//The current selections
 	this.results = [];
 	
+	//Duplicate text input
+	this.duplicateInput = null;
+	
 	//The search funciton.  This specifies where the multiSelect values come from when the user
 	//performs a search.  If left unset, the values will be sourced from the dataSet variable.
 	//This function should accept one search string and optionally an instance of "this".  This 
@@ -44,8 +58,18 @@ function multiSelectJs(el, options) {
 	this.searchMethod = this.localSearch;
 	this.searchTerms = null;//The current search terms
 	this.lastSearch = null;//The previous search terms
-	
-	this.init(el);
+	this.delimiter = ';';
+		
+	this.init(el, options);
+}
+
+function msData(label, value) {
+	this.label = label.trim();
+	this.value = value.trim().toUpperCase();
+}
+msData.prototype.equals = function(other) {
+	if(!(other instanceof msData)) return false;
+	return (this.value === other.value);
 }
 
 /**
@@ -62,27 +86,70 @@ multiSelectJs.prototype.init = function(el, options) {
 	if(this.initialized) return;
 	this.initializing = true;	
 	
-	//Error check
-	if(typeof el == "undefined" || !el) throw new TypeError('multiSelectJs requires a valid HTML element to initialize.');
+	this.parseOptions(options);
+	
 	//Check for id string
 	if(typeof el == "string") el = document.getElementById(el);
+	//Error check
+	if(typeof el == "undefined" || !el) throw new TypeError('multiSelectJs requires a valid HTML element to initialize.');
 	//Check whether a multiSelectJs already exists for this element
 	if(el.multiSelectJs != null) throw new Error("A multiSelectJs already exists for this element");
 	
 	this.template = el;
 	
+	this.buildGui(el);
 	
-	this.parseOptions(options);
-	
-	
+	el.multiSelectJs = this;
 	this.initialized = true;
 	this.initializing = false;
+	
+	
+		
 }
 
 multiSelectJs.prototype.parseOptions = function(options) {
 	if(!options) return;
+	//Duplicate text input
+	var t = typeof options.duplicateInput;
+	if(t !== "undefined") {
+		var s = options.duplicateInput;
+		if(t === "string") s = document.getElementById(s);
+		if(!!s && !!s.hasAttribute) {
+			if(s.tagName !== "INPUT" || !s.hasAttribute("type")) throw new TypeError('An invalid duplicateInput has been supplied to multiSelectJs.  This be an INPUT with a type of text or hidden.'); 
+			var t = s.getAttribute("type");
+			if(t != "text" && t != "hidden") throw new TypeError('An invalid duplicateInput has been supplied to multiSelectJs.  This must have a type of text or hidden.');
+			this.duplicateInput = s;
+		} else throw new TypeError('An invalid duplicateInput has been supplied to multiSelectJs.');
+	}
+	
+	//Data
+	if(typeof options.data !== "undefined") this.dataSet = this.parseData(data);
+
+}
+
+multiSelectJs.prototype.buildGui = function(el) {
+	
 	
 }
+
+multiSelectJs.prototype.parseData = function(data) {
+	var out = [];
+	if(Array.isArray(data)) {
+		for(var i = 0, j = data.length; i < j; i++) {
+			var t = data[i];
+			if(t instanceof msData) out.push(t);
+			
+			//HANDLE OTHER THINGS
+		}
+		
+	}
+	
+	//HANDLE DIFFERENT DATA INPUTS
+	return out;
+}
+
+
+
 
 /**
  *	The multiSelectJs destructor
@@ -91,13 +158,13 @@ multiSelectJs.prototype.destroy = function() {
 	try {
 		this.template.multiSelectJs = null;
 		this.template = null;
-	} catch(Exception e) {}
+	} catch(ex) {}
 	try {
 		this.dataSet = null;
 		this.selections = null;
 		this.results = null;
 		this.searchMethod = null;
-	} catch(Exception e) {}
+	} catch(ex) {}
 	this.initialized = false;
 	this.initializing = false;
 }
@@ -119,27 +186,118 @@ multiSelectJs.prototype.destroy = function() {
  */
 multiSelectJs.prototype.performSearch = function() {
 	//Ensure only one request fires at a time and that the search terms exist and have changed
-	if(this.hasRequest === true || this.searchTerms == null || this.searchTerms == this.lastSearch) return;
+	if(this.hasRequest === true || typeof this.searchTerms !== "string" || this.searchTerms.trim() === "" || this.searchTerms == this.lastSearch) return;
 	this.hasRequest = true;
 	try {
 		this.lastSearch = this.searchTerms;
 		this.searchMethod(this.searchTerms, this);
-	} catch(Exception e) {
+	} catch(ex) {
 		this.hasRequest = false;
 	}
 }
 
 /**
  *	The default search method.  This finds the closest matching values that exist within the this.dataSet
- *	variable and passes them to this.searchCallback.
+ *	variable and passes them to this.searchCallback.  The search terms passed will not be empty.
  */
 multiSelectJs.prototype.localSearch = function(terms) {
+	var res;	
 	//Do search here
-	
-	
-	this.searchCallback(null);
+	if(!Array.isArray(this.dataSet)) res = null;
+	else {
+		var l = this.dataSet.length;
+		if(l === 0) res = [];
+		else res = this.findClosestMatches(this.dataSet, terms);
+	}
+	this.searchCallback(res);
 }
+
+multiSelectJs.prototype.findClosestMatches = function(dataSet, searchString) {
+	//Begin levenshteinDistance function
+	function levenshteinDistance(a, b) {
+		if(a.length === 0) return b.length; 
+		if(b.length === 0) return a.length; 
+		var matrix = [];
+		// increment along the first column of each row
+		var i;
+		for(i = 0; i <= b.length; i++) {
+			matrix[i] = [i];
+		}
+		// increment each column in the first row
+		var j;
+		for(j = 0; j <= a.length; j++){
+			matrix[0][j] = j;
+		}
+		// Fill in the rest of the matrix
+		for(i = 1; i <= b.length; i++){
+			for(j = 1; j <= a.length; j++){
+				if(b.charAt(i-1) == a.charAt(j-1)){
+					matrix[i][j] = matrix[i-1][j-1];
+				} else {
+					matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, // substitution
+											Math.min(matrix[i][j-1] + 1, // insertion
+													 matrix[i-1][j] + 1)); // deletion
+				}
+			}
+		}
+		return matrix[b.length][a.length];  
+	}
+	//End levenshteinDistance function
+	var data = dataSet.slice(0);
 	
+	//Create a shortlist of matching options
+	var terms = searchString.split(' ');
+	var i = 0, j = terms.length;
+	var shortlistTestString = "";//Create a regular expression to eliminate non-matching options
+	for(; i < j; i++) {
+		var s = terms[i].trim();
+		if(terms[i].trim() === "") {
+			terms.splice(i, 1);
+			i--;
+			j--;
+		} else {
+			terms[i] = s;
+			shortlistTestString += "(?=.*" + s + ")";
+		}
+	}
+	var shortlistTest = new RegExp("^" + shortlistTestString + ".*$", 'igm');
+	shortlistTestString = null;
+	terms = null;
+	
+	//Remove currently selected values and non-matching values the data set
+	
+	for(var x = 0, y = this.selections.length, j = data.length; x < y; x++) {
+		for(i = 0; i < j; i++) {
+			var t = data[i];
+			if(t.equals(this.selections[x])) {
+				data.splice(i, 1);
+				i--;
+				j--;
+			}
+		}
+	}
+	
+	//Remove non-matching data and calculate the data's matching score
+	for(i = 0; i < j; i++) {
+		var t = data[i];
+		if(!t.label.match(shortlistTest)) {
+			data.splice(i, 1);
+			i--;
+			j--;
+		} else data[i].distance = levenshteinDistance(data[i].label, searchString);
+	}
+	
+	//Now sort the matching data by levenshtein distance
+	data.sort(function(a, b) {
+		return a.distance - b.distance;
+	});
+	
+	if(j > this.maxResults) return data.slice(0, this.maxResults);
+	else return data;	
+}
+
+
+
 /**
  *	The callback function that should be fired after a user has performed a search.  This method will
  *	trigger another search if another search has been queued.  This method will also validate the
@@ -147,6 +305,7 @@ multiSelectJs.prototype.localSearch = function(terms) {
  */
 multiSelectJs.prototype.searchCallback = function(data) {
 	var hadRequest = this.hasRequest;
+	this.hasRequest = false;
 	
 	//Do call back action here
 	if(data == null) {
@@ -155,23 +314,22 @@ multiSelectJs.prototype.searchCallback = function(data) {
 		
 	} else if(typeof data == "string") {
 		//There has been an error and an error message has been supplied
-		this.hasRequest = false;
 		throw new Error("There has been an error fetching multiSelectJs data: " + data);
 	} else if(!Array.isArray(data)) {
 		//An unknown error has occurred
 		console.log("Invalid data supplied:");
 		console.log(data);
-		this.hasRequest = false;
 		throw new TypeError("multiSelectJs has received an invalid data type in its search callback function");
 	} else {
 		//Data looking okay, so far...
 		this.results = null;
 		this.results = multiSelectJs.parseData(data, this.maxSelections);
 		
+		/* Handle an empty set */
+		
 		/* NOW DO THE GUI */
 	}
 	
-	this.hasRequest = false;
 	if(hadRequest) this.performSearch();
 }
 

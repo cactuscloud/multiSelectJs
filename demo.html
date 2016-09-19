@@ -35,21 +35,36 @@
 			multiSelectJs Demo (scroll down for the controlls)
 		</h2>
 		
+		<form>
+			<div>
+				<h3>
+					multiSelectJs with linked input field
+				</h3>
+				<label for="in0">
+					Linked input:
+				</label>
+				<input type="text" id="in0"/>
+				<label id="l0" for="s0">
+					Value = ""
+				</label>
+				<div id="ms0" class="multiSelectJs-placeholder"></div>
+			</div>
+		
 		
 		<div class="buttonArea">
 			Initialize multiSelectJs:
 			<div>
 				<div id="preInitStuff">
-					<button onclick="init()">
+					<button type="button" onclick="init()">
 						Initialize multiSelectJs
 					</button>
 				</div>
-				<div id="postInitStuff" style="display: none">
+				<div type="button" id="postInitStuff" style="display: none">
 					<button onclick="dest()">
 						Destroy multiSelects
 					</button>
 				</div>
-				<button id="enableButton" onclick="toggleEnabled(this)">
+				<button type="button" id="enableButton" onclick="toggleEnabled(this)">
 					Disable selects
 				</button>
 			</div>
@@ -59,6 +74,34 @@
 		
 		<script>
 		
+			var msCount = 1;
+			var msArray = [];
+			
+			var data = [];
+			data.push(new msData("cat", "cat"));
+			data.push(new msData("cats", "cats"));
+			data.push(new msData("cat cat", "cat cat"));
+			data.push(new msData("dog", "dog"));
+			data.push(new msData("dogs", "dogs"));
+			data.push(new msData("dog dog", "dog dog"));
+			
+			function init() {
+				var options = [];
+				//0 - with linked input
+				options.push({duplicateInput:	"in0",
+							data: data});
+				
+				
+				for(var i = 0; i < msCount; i++) {
+					msArray.push(new multiSelectJs("ms" + i, options[i]));
+					
+					
+				}
+			}
+			
+			function getValues() {
+				
+			}
 		
 		
 		</script>
