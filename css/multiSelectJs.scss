@@ -1,13 +1,143 @@
-$borderRadius:	1px;
+//Shape
+$borderRadius:		1px;
+$selectionRadius:	3px;
+
+//Colours
+$textColour:		#404041;
+$backgroundColour:	#FFF;
+$borderColour:		#CCC;
+$selectionColour:	#47ADE4;
+$selectionText:		#FFF;
+$dropdownColour:	#FCFCFC;
+$dropdownHover:		darken($dropdownColour, 5%);
+$selectionHover:	darken($selectionColour, 5%);
+
+@mixin noSelect() {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;  
+    user-select: none;
+}
+
+@font-face {
+    font-family: "multiSelectJs";
+    src: url('../fonts/multiSelectJs.woff') format('woff'), url('../fonts/multiSelectJs.ttf') format('truetype'), url('../fonts/multiSelectJs.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
 
 //The placeholder
 .multiSelectJs-placeholder {
 	display: inline-block;
-	height: 40px;
+	min-height: 40px;
+	height: auto;
 	width: 100%;
-	border: 1px solid #CCC;
+	box-sizing: border-box;
+	border: 1px solid $borderColour;
 	-webkit-border-radius: $borderRadius;
 	-moz-border-radius: $borderRadius;
 	border-radius: $borderRadius;
-	background-color: #FFF;
+	background-color: $backgroundColour;
+}
+
+.multiSelectJs {
+	position: relative;
+	display: inline-block;
+	min-height: 40px;
+	height: auto;
+	width: 100%;
+	padding: 2px;
+	box-sizing: border-box;
+	border: 1px solid $borderColour;
+	-webkit-border-radius: $borderRadius;
+	-moz-border-radius: $borderRadius;
+	border-radius: $borderRadius;
+	background-color: $backgroundColour;
+	color: $textColour;
+	@include noSelect();
+	.selections {
+		display: inline;
+		@include noSelect();
+	}
+	.selection-placeholder {
+		display: inline-block;
+		margin: 4px 0;
+		padding: 3px 0;
+		max-width: 1px;
+		@include noSelect();
+	}
+	.selection {
+		position: relative;
+		display: inline-block;
+		margin: 4px 3px;
+		padding: 3px 22px 3px 7px;
+		color: $selectionText;
+		background-color: $selectionColour;
+		-webkit-border-radius: $selectionRadius;
+		-moz-border-radius: $selectionRadius;
+		border-radius: $selectionRadius;
+		@include noSelect();
+		.selectionText {
+			padding: 3px;
+			@include noSelect();
+		}
+		.multiSelectJs-close {
+			position: absolute;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			width: 15px;
+			-webkit-border-radius: 0 $selectionRadius $selectionRadius 0;
+			-moz-border-radius: 0 $selectionRadius $selectionRadius 0;
+			border-radius: 0 $selectionRadius $selectionRadius 0;
+			@include noSelect();
+			&:before {
+				content: "\e600";
+				font-family: "multiSelectJs";
+				font-size: 14px;
+			}
+			&:hover {
+				background-color: $selectionHover;
+			}
+		}
+		
+	}
+	
+	.multiSelectJs-input {
+		display: none;
+		height: 100%;
+		width: 10px;
+		margin: 6px;
+		color: $textColour;
+	}
+	
+	
+}
+
+.multiSelectJs-dropdown {
+	position: absolute;
+	display: none;
+	height: auto;
+	min-height: 37px;
+	max-height: 250px;
+	padding-left: 0px;
+	padding-right: 0px;
+	box-sizing: border-box;
+	color: $textColour;
+	background-color: $dropdownColour;
+	border: 1px solid $borderColour;
+	border-top: none;
+	z-index: 9001;
+	@include noSelect();
+	
+	.multiSelectJs-option {
+		padding: 8px 10px;
+		@include noSelect();
+		&.hovered {
+			background-color: $dropdownHover;
+		}
+	}
+
 }
