@@ -4,6 +4,7 @@ $selectionRadius:	3px;
 
 //Colours
 $textColour:		#404041;
+$placeholderColour:	#AAA;
 $backgroundColour:	#FFF;
 $borderColour:		#CCC;
 $selectionColour:	#47ADE4;
@@ -61,12 +62,21 @@ $selectionHover:	darken($selectionColour, 5%);
 		display: inline;
 		@include noSelect();
 	}
+	//Positions the elements which follow
 	.selection-placeholder {
 		display: inline-block;
 		margin: 4px 0;
 		padding: 3px 0;
 		max-width: 1px;
 		@include noSelect();
+	}
+	//The placeholder text
+	.multiSelectJs-placeholderText {
+		padding-left: 6px;
+		color: $placeholderColour;
+		&.inputVisible {
+			padding-left: 0;
+		}
 	}
 	.selection {
 		position: relative;
@@ -93,6 +103,7 @@ $selectionHover:	darken($selectionColour, 5%);
 			-moz-border-radius: 0 $selectionRadius $selectionRadius 0;
 			border-radius: 0 $selectionRadius $selectionRadius 0;
 			@include noSelect();
+			cursor: pointer;
 			&:before {
 				content: "\e600";
 				font-family: "multiSelectJs";
@@ -111,6 +122,10 @@ $selectionHover:	darken($selectionColour, 5%);
 		width: 10px;
 		margin: 6px;
 		color: $textColour;
+		outline: none !important;//For browser defined focus outlines
+		&.placeholderVisible {
+			margin-right: 0;
+		}
 	}
 	
 	
@@ -138,6 +153,12 @@ $selectionHover:	darken($selectionColour, 5%);
 		&.hovered {
 			background-color: $dropdownHover;
 		}
+	}
+	
+	.multiSelectJs-noResults {
+		padding: 8px 10px;
+		@include noSelect();
+		cursor: default;
 	}
 
 }

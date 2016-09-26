@@ -40,19 +40,24 @@ function multiSelectJs(el, options) {
 	this.initializing = false;
 	this.hasRequest = false;//Is there a current server request being fired
 	
+	this.uId = null;
+	
 	//Behavioral settings
 	this.maxSelections = 5;//Number of items the user can select
 	this.maxResults = 10;//Maximum number of matches that may appear after a search
 	
 	//DOM references
 	this.template = null;//The object upon which this is based (can be any tag type)
+	this.form = null;//The form (if any) in which this multiSelectJs resides
 	this.main = null;
 	this.selectionArea = null;
 	this.placeholder = null;
 	this.input = null;
 	this.dropdown = null;
 	this.scrollParent = null;
-	this.selectionReferences = [];
+	this.selectionReferences = [];//The selected options that appear in the main div
+	this.resultReferences = [];//The contents of the dropdown
+	this.hoveredReference = null;//The currently highlighted option
 	
 	//DOM status
 	this.mainHeight = null;
@@ -60,9 +65,9 @@ function multiSelectJs(el, options) {
 	//Stored and selected data
 	this.dataSet = [];//The stored values from which the user can search
 	this.selections = [];//The current selections
-	this.results = [];//The contents of the dropdown
-	
-	this.selectedData = null;
+	this.results = [];//The data of the contents of the dropdown
+	this.selectionString = "";
+	this.hoveredData = null;//The data of the currently highlighted option
 	
 	//Duplicate text input
 	this.duplicateInput = null;
@@ -89,6 +94,7 @@ function multiSelectJs(el, options) {
 	
 	//Other
 	this.forbiddenCharacters = /[^a-zA-Z0-9 \+\=\-\*\$\%\.\,\!\@\#\&\(\)\;\"\'\?]/;
+	this.DELIMITER = ';';
 
 	if(!!el) this.init(el, options);
 }
@@ -112,6 +118,8 @@ if (!Array.isArray) {
 }
 
 multiSelectJs.prototype.init = function(el, options) {
+	this.uId = 'fs' + ("0000" + (Math.random()*Math.pow(36,4) << 0).toString(36)).slice(-4);
+	
 	//Check whether already initialized/initializing
 	if(this.initialized) return;
 	this.initializing = true;	
@@ -158,7 +166,7 @@ multiSelectJs.prototype.parseOptions = function(options) {
 		} else throw new TypeError('An invalid duplicateInput has been supplied to multiSelectJs.');
 	}
 	//Data
-	if(typeof options.data !== "undefined") this.dataSet = this.parseData(data);
+	if(typeof options.data !== "undefined") this.dataSet = multiSelectJs.parseData(data);
 	//Scroll parent
 	t = typeof options.scrollParent;
 	if(t !== "undefined") {
@@ -177,23 +185,25 @@ multiSelectJs.prototype.buildGui = function(el) {
 	var main = doc.createElement("div");
 	main.className = "multiSelectJs";
 	main.tabIndex = 0;
+	
+	//Build selected item area
 	var selectionArea = doc.createElement("div");
 	selectionArea.className = "selections";
 	selectionArea.innerHTML = "<span class=\"selection-placeholder\">&nbsp;</span>";
-	
-	//Create the placeholder
-	var placeholder = doc.createElement("span");
-	placeholder.className = "multiSelectJs-placeholder";
-	placeholder.innerHTML = this.placeholderText;
-	main.appendChild(placeholder);
+	main.appendChild(selectionArea);
 	
 	//Create the input
 	var input = doc.createElement("span");
 	input.setAttribute("contenteditable", "true");
 	input.className = "multiSelectJs-input";
-	main.appendChild(selectionArea);
 	main.appendChild(input);
 	
+	//Create the placeholder
+	var placeholder = doc.createElement("span");
+	placeholder.className = "multiSelectJs-placeholderText";
+	placeholder.innerHTML = this.placeholderText;
+	placeholder.setAttribute("spellcheck", false);
+	main.appendChild(placeholder);	
 	
 	//Create the dropdown
 	var dropdown = doc.createElement("div");
@@ -213,48 +223,68 @@ multiSelectJs.prototype.buildGui = function(el) {
 
 	//Get main div height
 	this.mainHeight = $(main).height();
+	
+	//Get any surrounding form
+	var f = $(el).closest("form");
+	if(f.length !== 0) this.form = f[0];
 }
 
 multiSelectJs.prototype.setEventListeners = function() {
-	this.main.addEventListener("click", this.focusInput.bind(this));
+	$(this.main).on("click." + this.uId, this.focusInput.bind(this));
+	$(this.main).on("focus." + this.uId, this.focusInput.bind(this));
 	
-	this.input.addEventListener("input", this.inputChange.bind(this));
-	this.input.addEventListener("keydown", this.inputKeyDown.bind(this));
+	$(this.input).on("input." + this.uId, this.inputChange.bind(this));
+	$(this.input).on("keydown." + this.uId, this.inputKeyDown.bind(this));
 	
-	this.input.addEventListener("blur", this.blurInput.bind(this));
+	$(this.input).on("blur." + this.uId, this.blurInput.bind(this));
 	
-	$(window).on('resize orientationchange', this.checkDropdownPosition.bind(this));
-    $(window).on('beforeunload', this.hideDropdown.bind(this));
+	$(window).on("resize." + this.uId + " orientationchange." + this.uId, this.checkDropdownPosition.bind(this));
+    $(window).on("beforeunload." + this.uId, this.hideDropdown.bind(this));
 }
 
-multiSelectJs.prototype.parseData = function(data) {
-	var out = [];
-	if(Array.isArray(data)) {
-		for(var i = 0, j = data.length; i < j; i++) {
-			var t = data[i];
-			if(t instanceof msData) out.push(t);
-			
-			//HANDLE OTHER THINGS
-		}
-		
-	}
-	
-	//HANDLE DIFFERENT DATA INPUTS
-	return out;
-}
-
-multiSelectJs.prototype.focusInput = function() {
+multiSelectJs.prototype.focusInput = function(ev) {
 	if(this.selections.length < this.maxSelections) {
-		this.input.style.display = "inline";
-		this.input.focus();
+		var input = this.input;
+		input.style.display = "inline";
+		$(this.placeholder).addClass("inputVisible");
+		var l = input.innerHTML.length;
+		if(l === 0) this.showPlaceholder();
+		else {
+			this.showDropdown();
+			//Set cursor to end position - if click occurred to the right of the text
+			if(ev.clientX > $(input).offset().left + $(input).width()) {
+				var selection = window.getSelection();
+				range = document.createRange();
+				range.setStart(input.firstChild, l);
+				range.setEnd(input.firstChild, l);
+				selection.removeAllRanges();
+				selection.addRange(range);
+			}	
+		}
+		input.focus();
 	} else this.blurInput();
 }
 
 multiSelectJs.prototype.blurInput = function() {
-	if(this.input.innerHTML == "" || this.selections.length >= this.maxSelections) this.input.style.display = "none";
+	if(this.input.innerHTML === "" || this.selections.length >= this.maxSelections) {
+		this.input.style.display = "none";
+		$(this.placeholder).removeClass("inputVisible");
+		if(this.input.innerHTML === "") this.placeholder.style.display = "inline";
+	}
+}
+
+multiSelectJs.prototype.showPlaceholder = function() {
+	$(this.input).addClass("placeholderVisible");
+	this.placeholder.style.display = "inline";
+}
+
+multiSelectJs.prototype.hidePlaceholder = function() {
+	$(this.input).removeClass("placeholderVisible");
+	this.placeholder.style.display = "none";
 }
 
 multiSelectJs.prototype.inputChange = function() {
+	if(!this.initialized) return;
 	var t = this.input;
 	
 	//Sanitize the contents	
@@ -292,15 +322,55 @@ multiSelectJs.prototype.inputChange = function() {
 		}
 	}
 	
-	//Prepare search
 	this.searchTerms = newValue;
-	this.performSearch();
+	//Set the placeholder
+	if(newValue.length == 0) {
+		this.showPlaceholder();
+		this.hideDropdown();
+	} else {
+		this.hidePlaceholder();
+		//Make sure a close dialog can be reopened with the same search terms
+		if(this.searchTerms === this.lastSearch) this.showDropdown();
+		else this.performSearch();
+	}
 }
 
 multiSelectJs.prototype.inputKeyDown = function(ev) {
-	//Stop <br/> elements from being entered into the input
-	if(ev.keyCode === 13) ev.preventDefault();
-	//else if(ev.keyCode === 8 && this.
+	if(!this.initialized) return;
+	var key = ev.keyCode;
+	//The enter key
+	if(key === 13) {
+		//Stop <br/> elements from being entered into the input
+		ev.preventDefault();
+		//Select the currently highlighted option
+		if(this.dropdownVisible) {
+			if(this.hoveredData != null) this.selectOption(this.hoveredReference);
+		} else if(this.form != null) this.form.submit();//Submit the form
+	//Backspace
+	} else if(key === 8) {
+		//If the input is empty, delete the latest selection
+		if(this.input.innerHTML.length === 0 && this.selections.length !== 0) {
+			this.selections.pop();
+			this.updateSelectedData();
+			this.lastSearch = null;
+		}
+	}
+	//Down arrow
+	else if(key === 40) {
+		//Stop the page from scrolling
+		ev.preventDefault();
+		if(this.dropdownVisible) this.incrementHoverIndex(1);
+	}
+	//Up arrow
+	else if(key === 38) {
+		//Stop the page from scrolling
+		ev.preventDefault();
+		if(this.dropdownVisible) this.incrementHoverIndex(-1);
+	}
+	//Escape
+	else if(key == 27) this.hideDropdown();
+	
+	console.log(ev.keyCode);
 }
 
 /**
@@ -331,9 +401,10 @@ multiSelectJs.prototype.updateSelectedData = function() {
 	}
 	j = guis.length;
 	
-	//Add new values to gui
-	var s, t;
+	//Add new values to gui and prepare update selection string
+	var s, t, valueStrings = [];
 	for(x = 0; x < y; x++) {
+		valueStrings.push(values[x].value);
 		found = false;
 		for(i = 0; i < j; i++) {
 			if(this.isDataEqual(guis[i].value, values[x])) {
@@ -346,7 +417,7 @@ multiSelectJs.prototype.updateSelectedData = function() {
 			t = document.createElement("span");
 			t.value = values[x];
 			t.className = "selection";
-			t.innerHTML = "<span class=\"selectionText\">" + values[x].label + "</span>";
+			t.innerHTML = "<span class=\"selectionText\" spellcheck=\"false\">" + values[x].label + "</span>";
 			s = document.createElement("span");
 			s.className = "multiSelectJs-close";
 			s.onclick = this.removeSelection.bind(this);
@@ -356,10 +427,11 @@ multiSelectJs.prototype.updateSelectedData = function() {
 		}
 	}
 	
-	//Handle placeholder
-	if(this.selections.length === 0) {
-		this.placeholder.style.display = "none";
-	}
+	//Update selection string
+	this.selectionString = valueStrings.join(this.DELIMITER);
+	
+	//Update the linked text field
+	if(this.duplicateInput !== null) this.duplicateInput.value = this.selectionString;
 	
 	//Update dropdown position
 	if(this.dropdownVisible) {
@@ -371,33 +443,138 @@ multiSelectJs.prototype.updateSelectedData = function() {
 	}
 }
 
+/**
+*	The dropdown option click event - used to add new selections
+*/
 multiSelectJs.prototype.optionClick = function(ev) {
+	this.selectOption(ev.target);
+}
+
+/**
+*	Selects an option from the dropdown box.  Accepts a reference to the select option element.
+*/
+multiSelectJs.prototype.selectOption = function(optionReference) {
 	if(this.selections.length < this.maxSelections) {
-		this.selections.push(ev.target.value);
+		var value = optionReference.value;
+		this.selections.push(value);
 		this.updateSelectedData();
-		ev.target.parentElement.removeChild(ev.target);
+		
+		//Get target index
+		var oldIndex = null;
+		for(var i = 0, j = this.resultReferences.length; i < j; i++) {
+			if(this.resultReferences[i].value === value) {
+				oldIndex = Math.max(0, i - 1);
+				break;
+			}
+		}
+		//Handle a non-existant entry (shouldn't happen)
+		if(oldIndex === null) throw new Error("Error in multiSelectJs.selectOption(ref).  Supplied reference cannot be found in the dropdown");
+		
+		//Remove target from gui
+		optionReference.parentElement.removeChild(optionReference);
+		
+		//Remove target from results array
+		for(var i = 0, j = this.results.length; i < j; i++) {
+			if(this.isDataEqual(this.results[i], value)) {
+				this.results.splice(i, 1);
+				this.resultReferences.splice(i, 1);
+				i--;
+				j--;
+			}
+		}
+		//Reset highlight
+		if(this.hoveredData != null) {
+			if(this.results.length === 0) {
+				this.hoveredData = null;
+				this.hoveredReference = null;
+			} else {
+				this.hoveredData = this.results[oldIndex];
+				this.hoveredReference = this.resultReferences[oldIndex];
+				$(this.hoveredReference).addClass("hovered");
+			}
+		}
+		
+		//Hide dropdown if the maximum number of selections has been reached
 		if(this.selections.length >= this.maxSelections) {
 			this.hideDropdown();
 			this.blurInput();
 		}
+		//Set no results message
+		if(j === 0) this.showNoResultsMessage();
 	}
 }
 
+/**
+*	Triggers when the mouse enters or moves within an option in the dropdown box.  Used to highlight
+*	the hovered option
+*/
 multiSelectJs.prototype.optionEnter = function(ev) {
-	var old = this.selectedData;
+	var old = this.hoveredData;
 	var t = ev.target;
-	this.selectedData = t.value;
-	if(!this.isDataEqual(this.selectedData, old)) $(t).addClass("hovered");
+	var v = t.value;
+	this.hoveredData = v;
+	if(!this.isDataEqual(this.hoveredData, old)) {
+		//Select current option
+		$(t).addClass("hovered");
+		//Deselect other options
+		for(var i = 0, j = this.resultReferences.length; i < j; i++) {
+			t = this.resultReferences[i];
+			if(this.isDataEqual(t.value, v)) this.hoveredReference = t;
+			else $(t).removeClass("hovered");
+		}
+	}
+}
+
+/**
+*	Increments or decrements the selected index by the offset specified
+*/
+multiSelectJs.prototype.incrementHoverIndex = function(offset) {
+	var results = this.results, resultOptions = this.resultReferences;
+	var i, j = results.length;
+	console.log(j);
+	//Handle no results
+	if(j === 0) {
+		this.hoveredData = null;
+		this.hoveredReference = null;
+		return;
+	}
+	//Get and increment the current index (if any) - otherwise start at 0
+	var index = 0;
+	if(this.hoveredData !== null) {
+		var data = this.hoveredData;
+		for(i = 0; i < j; i++) {
+			if(this.isDataEqual(data, results[i])) {
+				index = i + offset;
+				break;
+			}
+		}
+	}
+	console.log('index', index);
+	//Stop overflow
+	if(index < 0 || index >= j) return;
+	//Apply the new index
+	for(i = 0; i < j; i++) {
+		if(i === index) {
+			this.hoveredReference = resultOptions[i];
+			$(this.hoveredReference).addClass("hovered");
+			this.hoveredData = results[i];
+			this.scrollOptionIntoView(i);
+		} else $(resultOptions[i]).removeClass("hovered");
+	}
 }
 
 multiSelectJs.prototype.optionExit = function(ev) {
-	this.selectedData = null;
+	this.hoveredData = null;
+	this.hoveredReference = null;
 	$(ev.target).removeClass("hovered");
 }
 
+/**
+*	The selected item click event - used to remove selected options
+*/
 multiSelectJs.prototype.removeSelection = function(ev) {
-	var v = ev.target.parentElement.value;
-	for(var i = 0, j = this.selections.length; i < j; i++) {
+	var v = ev.target.parentElement.value, i = 0, j = this.selections.length;
+	for(; i < j; i++) {
 		if(this.isDataEqual(v, this.selections[i])) {
 			this.selections.splice(i, 1);
 			i--;
@@ -405,38 +582,60 @@ multiSelectJs.prototype.removeSelection = function(ev) {
 		}
 	}
 	this.updateSelectedData();
+	this.hideDropdown();
+	if(this.searchTerms != "") {
+		this.lastSearch = null;
+		this.performSearch();
+	}
 }
 
 /**
  *	The multiSelectJs destructor
  */
 multiSelectJs.prototype.destroy = function() {
+	//Remove event listeners
+	try {
+		$(document.body).off("." + this.uId);
+		$(window).off("." + this.uId);
+		$(this.input).off("." + this.uId);
+		$(this.main).off("." + this.uId);
+	} catch(ex) {}
+	//Clear template DOM data
 	try {
 		this.template.multiSelectJs = null;
 		this.template = null;
+		this.form = null;
 	} catch(ex) {}
+	//Remove stored data
 	try {
 		this.dataSet = null;
 		this.selections = null;
 		this.results = null;
 		this.searchMethod = null;
+		this.resultReferences = null;
 	} catch(ex) {}
-	this.input = null;
+	//Remove dropdown from DOM
 	try {
 		this.dropdown.parentNode.removeChild(this.dropdown);
 		this.dropdown = null;
 	} catch(ex) {}
+	//Remove main div from DOM
 	try {
+		this.input = null;
 		this.main.parentNode.removeChild(this.main);
 		this.main = null;
 	} catch(ex) {}
+	//Remove remaining references and reset variables
 	this.scrollParent = null;
 	this.selectionArea = null;
+	this.hoveredReference = null;
 	this.placeholder = null;
-	$(el).show();
 	this.dropdownVisible = false;
+	this.uId = null;
 	this.initialized = false;
 	this.initializing = false;
+	//Show placeholder
+	$(el).show();
 }
 
 
@@ -578,7 +777,7 @@ multiSelectJs.prototype.searchCallback = function(data) {
 	this.hasRequest = false;
 		
 	//Get data
-	this.results = this.parseData(data);
+	this.results = multiSelectJs.parseData(data);
 
 	//Populate dropdown
 	this.populateDropdown();
@@ -644,24 +843,42 @@ multiSelectJs.prototype.positionDropdown = function() {
     this.frameRequested = false;
 }
 
+/**
+*	Scrolls the select option at a given index into view within the dropdown
+*/
+multiSelectJs.prototype.scrollOptionIntoView = function(index) {
+	if(!this.initialized || !this.dropdownVisible || this.results.length === 0) return;
+	//Get the selected option
+	var dropdown = this.dropdown;
+	var selection = this.resultReferences[index];
+    //Scroll dropdown to show option
+    var optTop = $(selection).position().top;
+    var optHt = $(selection).innerHeight();
+    var dropTop = $(dropdown).offset().top;
+    var dropHt = $(dropdown).innerHeight();
+    if(optTop < 0) dropdown.scrollTop += optTop;
+    else if(optTop + optHt > dropHt) dropdown.scrollTop += (optTop + optHt - dropHt);
+    //Scroll window into view
+    if($(selection).offset().top < $(window).scrollTop()) selection.scrollIntoView(true);
+    else if($(selection).offset().top + $(selection).innerHeight() > $(window).scrollTop() + window.innerHeight) selection.scrollIntoView(false);
+}
+
 multiSelectJs.prototype.hideDropdown = function(immediate) {
 	if(!this.dropdownVisible) return;
-	if(immediate === true) {
-		
-		$(this.dropdown).hide();
-	} else {
-		
-		$(this.dropdown).fadeOut();
-	}
+	if(immediate === true) $(this.dropdown).hide();
+	else $(this.dropdown).stop().fadeOut();
+	this.hoveredData = null;
+	this.hoveredReference = null;
 	this.dropdownVisible = false;
 }
 
 multiSelectJs.prototype.showDropdown = function() {
 	if(this.dropdownVisible === true) return;
 	this.prepareToPositionDropdown();
-	
+	this.hoveredData = null;
+	this.hoveredReference = null;
 	this.dropdownVisible = true;
-	$(this.dropdown).fadeIn();
+	$(this.dropdown).stop().fadeIn();
 	
 }
 
@@ -669,9 +886,12 @@ multiSelectJs.prototype.populateDropdown = function() {
 	var dropdown = this.dropdown;
 	var results = this.results;
 	var doc = document;
-	var t;
+	var t, j = results.length;
 	dropdown.innerHTML = "";
-	for(var i = 0, j = results.length; i < j; i++) {
+	this.resultReferences = [];
+	//Yes results
+	if(j === 0) this.showNoResultsMessage();
+	else for(var i = 0; i < j; i++) {
 		t = doc.createElement("div");
 		t.className = "multiSelectJs-option";
 		t.innerHTML = results[i].label;
@@ -679,9 +899,28 @@ multiSelectJs.prototype.populateDropdown = function() {
 		t.onmouseover = this.optionEnter.bind(this);
 		t.onmouseout = this.optionExit.bind(this);
 		t.onclick = this.optionClick.bind(this);
+		this.resultReferences.push(t);
 		dropdown.appendChild(t);
 	}
 }
+
+multiSelectJs.prototype.showNoResultsMessage = function() {
+	this.dropdown.innerHTML = "";
+	var t = document.createElement("div");
+	t.className = "multiSelectJs-noResults";
+	t.innerHTML = this.noResultsText;
+	t.onclick = this.hideDropdown.bind(this);
+	this.dropdown.appendChild(t);
+}
+
+/*
+ *	Data handling methods
+ */
+
+/**
+*	Get selected data as a string
+*/
+//this.selectionString
 
 /*
  *	Static functions
@@ -696,22 +935,28 @@ multiSelectJs.prototype.populateDropdown = function() {
 }
 
 /**
- *	"Static" function that checks and limits the size of an array of data values for a multiSelectJs
- *	instance.
- */
-multiSelectJs.parseData = function(data, limit) {
-	if(!Array.isArray(data)) throw new TypeError("multiSelectJs has received an invalid data type in its search callback function");
-	var x, out = [];
-	var i = 0, j = data.length;
-	if(typeof limit == "number" && limit < j) j = limit;
-	for(; i < j; i++) {
-		x = data[i];
-		if(!typeof x.v == "string" || !typeof x.n == "string") {
-			console.log("Invalid data supplied:");
-			console.log(x);
-			throw new TypeError("multiSelectJs has received invalid result data at index " + i);
+*	Parses data into the multiSelectJs.  Accepts the following formats:
+*		-	[{value: "", label: ""}, ...]
+*		-	As above - but JSON encoded
+*/
+multiSelectJs.parseData = function(data) {
+	var out = [];
+	var dataType = typeof data;
+	if(dataType === "string") {
+		try {
+			data = JSON.parse(data);
+		} catch(ex) {
+			throw new TypeError("Invalid " + dataType + " entered into multiSelectJs.parseData().  If using a string, it must represent a JSON encoded array of objects with 'value' and 'label' parameters as strings.");
 		}
-		out.push(x);
 	}
-	return out;	
+	if(Array.isArray(data)) {
+		for(var i = 0, j = data.length; i < j; i++) {
+			var t = data[i];
+			if(typeof t.label === "string" && typeof t.value === "string") out.push(t);
+			//HANDLE OTHER THINGS
+		}
+	} else throw new TypeError("Invalid " + dataType + " entered into multiSelectJs.parseData().  If using a string, it must represent a JSON encoded array of objects with 'value' and 'label' parameters as strings.");
+	
+	//HANDLE DIFFERENT DATA INPUTS
+	return out;
 }
