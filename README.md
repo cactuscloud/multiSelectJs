@@ -1,194 +1,222 @@
-# fancySelectJs
-An custom JavaScript select / multi-select / multi-check box
+# multiSelectJs
+An custom JavaScript select / multi-select and/or auto-completing search box
 
 Purpose:
-- To create a lightweight stylable alternative to the standard HTML select boxes.
-- To have multi-select / multi-check functionality
-- To be Salesforce compatible
+- 	To create a lightweight stylable alternative to the standard HTML select boxes.
+- 	To have multi-select and autocomplete search functionality with the possibility of
+	server-side database searching.
+- 	To be Salesforce compatible
 
 Notes: (Important stuff)
 - This requires JQuery
-- All options must have a value attribute set
-- All options values must not contain any commas
 
 Some instructions: (not too many)
 
 	Initialization:
-		1.  Reference the js/multiSelect.min.js script with your page
-		2.  Ditto, but for the css/multiSelect.css an JQuery
-		3.  Add some styling (mainly width)
-		4.  Create a HTML text box
-		5.  With JavaScript, create a new multiselect
+		1.  Reference JQuery and the js/multiSelect.min.js script with your page
+		2.  Ditto, but for the css/multiSelect.css 
+		3.  Add a placeholder div
+		5.  Using JavaScript, initialize the multiselect
 
 	Quick example:
 	<html>
 		<head>
 			<!-- begin steps 1 & 2 -->
 			<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
-			<script src="js/fancySelectJs.js"></script>
-			<link rel="stylesheet" type="text/css" href="css/fancySelectJs.css"/>
+			<script src="js/multiSelectJs.min.js"></script>
+			<link rel="stylesheet" type="text/css" href="css/multiSelectJs.css"/>
 			<!-- end steps 1 & 2 -->
-			<!-- begin step 3 -->
-			<style>
-				.fancySelectJs {
-					width: 200px;
-				}
-			</style>
-			<!-- end step 3 -->
 		</head>
 		<body>
-			<!-- begin step 4 -->
-			<select id="mySelectId">
-				<option value="1">One</option>
-				<option value="2">Two</option>
-				<option value="3">Three</option>
-			</select>
-			<!-- end step 4 -->
+			<!-- begin step 3 -->
+			<div id="placeholderId" class="multiSelectJs-placeholder"></div>
+			<!-- end step 3 -->
 			<script>
-				/* begin step 5 */
-				var fancyselect = new fancySelectJs(document.getElementById("mySelectId"));
-				/* end step 5 */			
+				/* begin step 4 */
+				var multiselect = new multiSelectJs("placeholderId");
+				/* end step 4 */			
 			</script>
 		</body>
 	</html>
 	
 	Additional options:
-		There are a few ways you can affect how fancySelectJs behaves.
-			1.	You can set html attributes on the SELECT element:
+		There are a few ways you can affect how multiSelectJs behaves.
+			1.	The multiSelectJs data type:
 			
-				Useful SELECT attributes to set on the parent element:
-					Attribute			Effect
-					
-					data-id				This sets the id attribute on the fancySelectJs
-					
-					class				This class will be applied to the new SELECT box
-					
-					data-placeholder	The placeholder text to use when nothing is selected
-					
-					multiple			Should this be a multiselect box
-					
-					data-value			By default, multiselect will inherit its value from the HTML
-										SELECT element it replaces on initialization.  However, you
-										may be working in a framework (looking at you salesforce) that
-										doesn't give you the flexibility you need to set the
-										default value you need.  Or perhaps you want your SELECT to
-										initialize with no default value.  Either way, use this
-										attribute to override the initial SELECT box default value.
-										
-					data-scroll-parent	You usually won't need this - but if you do, it's here.
-										Basically, if you are displaying this fancySelect on a modal,
-										fixed position, or scrollable element, then it's parent position
-										and resize/scroll movement will differ from that of the document
-										body.  Set this to the ID of the closest scrolling/fixed/weird
-										element to ensure the dropdown part of the fancySelect positions
-										correctly.
-										
-					disabled			Is this SELECT box disabled?
-					
-					data-all-index		This allows you to specify an "All" option in a multi-check
-										fancySelectJs.  If this "All" option is checked, all other
-										options become unchecked (but the selects value reflects all).
-										Check out the demo.html for an example.
-										
-										Note also, that this attribute takes precedence over the
-										data-all attribute that you can specify on the OPTION elements.
-										
-										The index should be a number equal to 0 or greater, but less than
-										number of OPTION elements contained within the SELECT.
+				All data used by multiSelectJs is stored in the multiSelectJs.Data data type.  This
+				data type can be constructed as follows:
+					new multiSelectJs.Data("label text", "unique value");
 				
-					data-prefix			Enter any text that should appear before the selection in the closed
-										fancySelectJs box here.  For example, where data-prefix="Sort By:", the
-										fancySelectJs will show "Sort By: SELECTED_VALUE".
-										
-				Useful OPTION attributes to set on one OPTION element:
-					data-all			Sets this to an "All" option which silently selects everything
-										as per the data-all-index attribute above.  Note that this can
-										only be applied to one OPTION element per SELECT.
-										
-										Also, note that this attribute will have no effect is the
-										data-all-index attribute is set on the parent SELECT element.
-										
-										Both these options exist, for, unforseen framework compatibility
-										issues... ugh.
-										
-			2.	You can use the following JavaScript functions on an initialized fancySelectJs object:
+				This data is always accepted and returned in an array.
+			
+				Alternatively, data can be entered in the following format:
+					{value: "", label: ""}
 				
-				DELIMITER
-					This defines the delimiter character that the fancySelectJs will use.  This is set to
-					a comma by default.  The current version of fancySelectJs has not accounted for this
-					being changed.
+				This data also is always handled as an array, i.e:
+					[{value: "", label: ""}, ...]
 					
-				init()
-					Initializes an uninitialized fancySelectJs instance.  This should not be required in
-					common use.
-				
-				destroy()
-					Destroys a fancySelectJs instance and removes all related elements from the DOM.  Also
-					restores the original select box.
+			2.	The following options can be set in the constructor:
+			
+				duplicateInput
+					A text or hidden input field to store the selected values in.  This is useful for
+					integration with other frameworks, such as SalesForce, or for use with default
+					HTML form submission.  This value can be either a text ID or a reference to an
+					actual text or hidden element.
 					
-					This method would only be required under some circumstances, such as when a window
-					containing a fancySelect is dynamically rebuilt.
+				data
+					Any preloaded data to insert into the multiSelectJs.  This data will be searched
+					when the user enters a search string.  This will not be used if a custom search function
+					is used.
 					
-				reset()
-					Clears a fancySelectJs.  This function automatically runs when the fancySelectJs's
-					parent form (if any) fires its onreset event.
+					This value should be of the data type specified above (see point 1).
 					
-				setValue(String value)
-					Clears the fancy select and sets it to a given value or to a DELIMITER separated list of
-					values.
-		
-				getValue() : String
-					Return a string containing the value of the fancySelectJs.  The same could be
-					achieved by selecting the original HTML SELECT element with JQuery and running the
-					JQuery val() function - i.e. var value = $("#someHtmlSelect").val();
+				scrollParent
+					The scroll parent for this multiSelectJs.  This is useful for selects placed
+					on a modal or dialog that doesn't scroll with the body.  This parameter
+					accepts an element ID or a reference to an element.
 					
-				disable()
-					Disables the fancySelectJs.
+				placeholder
+					The placeholder text that appears when there is no text entered into the
+					multiSelectJs.
 					
-				enable()
-					Enables the fancySelectJs.
+				noResultsMessage
+					The text which should appear when a search string returns no results
 					
-				fancySelectJs.parseData(String data, [String delimiter])
-					This "static" function will attempt to parse a string or array input into an array
-					that can be used to set the value of a HTML SELECT element with JQuery's
-					$(elem).val(new_value) function.
+				maxSelections
+					The maximum number of options the user may select
 					
-					The function will attempt to parse the supplied data using the supplied delimiter if
-					that data is a String.  If no delimiter is supplied, a comma will be used by default.
+				maxResults
+					The maximum number of results that may appear after a search
 					
-					This function will return an array on success, and a null value on failure.
+				delimiter
+					The delimiter to use when return data as a string
 					
-			3.	Accessing the fancySelectJs class after initialization:
+				selections
+					Any preselected options set for this multiSelectJs instance.  These are the options
+					that should already be selected once the multiSelectJs loads.
 
-				There are two ways in which you can access a specific fancySelectJs instance after it
+					This value should be of the data type specified above (see point 1).
+					
+				searchMethod
+					- A custom search method that may allow for server side request integration.
+					This should point to a JavaScript method that can take up to two parameters.
+					This function should have the following format:
+
+					function myCustomFunction(searchTerms, thisInstance) {
+						//Let's assume the following function contacts the server and
+						//calls its second argument as a callback upon completion
+						makeServerRequest(searchTerms, function(result) {
+							//Test that request was successful
+							//Next format data in a manner that can be accepted by multiSelectJs
+							//Finally, call the multiSelectJs callback function
+							thisInstance.searchCallback(result.dataArray);
+						}
+					}
+					
+					There is an example of this in the demo file - just using a timer instead of 
+					an actual server side search.
+										
+			3.	You can use the following JavaScript functions on an initialized fancySelectJs object:
+				
+				new multiSelectJs([Various placeholderElement, Object options]) : multiSelectJs
+					The multiSelectJs constructor. This will create and initialize a multiSelectJs
+					instance.  This can take up to two arguments:
+					-	placeholderElement
+							An optional (but recommended) string pointing to a unique HTML element ID
+							or a reference to a HTML element loaded into the DOM.  This can point to
+							any element, but should be a DIV with the className of 
+							"multiSelectJs-placeholder" for styling purposes.
+							
+							If this value is not supplied, the multiSelectJs will be created, but not
+							initialized.  The uninitialized multiSelectJs can then be initialized later
+							using the init() function.
+					-	options
+							This is an optional set of options that can be applied to change the
+							default behaviour of the multiSelectJs instance.  The available options
+							are described above in section 2.
+							
+							Here is an example of the constructor in use with some options specified:
+								var options = {maxResults: 5,
+											   maxSelections: 3,
+											   placeholder: "Select something!"};
+								var multiselect = new multiSelectJs("elementId", options);
+								
+				init(Various placeholderElement, [Object options]) : void
+					Initializes a constructed multiSelectJs instance.  This method should only be
+					required if a multiSelectJs has been constructed without providing any arguments,
+					or if a multiSelectJs has been initialized and then uninitialized using the
+					destroy() function.
+					-	placeholderElement
+							A string pointing to a unique HTML element ID or a reference to a HTML element
+							loaded into the DOM.  This can point to any element, but should be a DIV with
+							the className of "multiSelectJs-placeholder" for styling purposes.
+					-	options
+							This is an optional set of options that can be applied to change the
+							default behaviour of the multiSelectJs instance.  The available options
+							are described above in section 2.
+							
+				getValue() : String
+					Returns a string containing the current value of the multiSelect.  Each entry in the
+					result will be separated by the character specified in the delimiter option described
+					in section 2 (a semi-colon by default).
+					
+					This function will return null if the multiSelectJshas not been initialized.
+						
+				getSelections() : Array
+					Returns an array of the multiSelect's currently selected values.  The data will be an
+					array of objects in the format described above in section 1.
+						
+					This function will return null if the multiSelectJs has not been initialized.
+						
+				setSelections(Array selections)
+					Sets the current selections to the value specified in the function's argument.
+					
+					The argument supplied should be in the format described above in section 1.
+						
+				addSelections(Array selections)
+					Appends the currently selected values with values specified in the function's
+					argument.
+					
+					The argument supplied should be in the format described above in section 1.
+
+				removeSelections(Array selections)
+					Removes the specified selections from the multiSelect's currently selected
+					data.
+					
+					The argument supplied should be in the format described above in section 1.
+
+				reset()
+					Clears the currently selected data from the multiSelectJs instance.
+				
+			4.	Accessing the multiSelectJs class after initialization:
+
+				There are two ways in which you can access a specific multiSelectJs instance after it
 				has been initialized.
 				
-					a)	Store the fancySelectJs object as a variable:
+					a)	Store the multiSelectJs object as a variable:
 						e.g.
-							var someSelectElement = document.getElementById("mySelectId");
-							var storedFancySelect = new fancySelectJs(someSelectElement);
+							var someElement = document.getElementById("myId");
+							var storedMultiSelect = new multiSelectJs(someElement);
 							//Oh yeah! I can use this variable later on
-							storedFancySelect.setValue("ducks!");
+							var data = storedMultiSelect.getSelections();
 							
-					b)	Retrieve it from the original SELECT element:
+					b)	Retrieve it from the originally supplied element:
 						e.g.
-							var someSelectElement = document.getElementById("mySelectId");
-							(function() {
-								var storedFancySelect = new fancySelectJs(someSelectElement);
-							})();
+							var someElement = document.getElementById("mySelectId");
+							new multiSelectJs(someElement);
 							
 							function changeThatValue() {
-								//Oh shit - I wanna change the fancySelect value, but the variables
-								//now out of scope because I didn't store it...  All is LOST!!! or is it?
-								var retrievedFancySelect = someSelectElement.fancySelectJs;
+								//Oh shit - I wanna change the multiSelect value, but the variables
+								//gone because I didn't store it...  All is LOST!!! or is it?
+								var retrievedMultiSelect = someElement.multiSelectJs;
 								//Yesss!  Now I can do this important thing I need to do!
-								retrievedFancySelect.setValue(retrievedFancySelect.getValue());
+								retrievedMultiSelect.setSelections(retrievedMultiSelect.getSelections());
 							}
 							
 			4.	Polyfills:
 			
-				Ading fancySelectJs to your page will also add polyfills for Array.includes(value),
-				Array.isArray(value), and Array.indexOf(value) as per Mozilla's specifications.
+				Ading fancySelectJs to your page will also add polyfills for Array.isArray(value)
+				as per Mozilla's specifications.
 					
 					
 Ugh, that's all.  As you were.

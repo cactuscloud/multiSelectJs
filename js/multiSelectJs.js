@@ -41,6 +41,21 @@
  *						- The delimiter to use when return data as a string
  *					selections
  *						- Parseable data containing preselected data for the multiSelectJs instance
+ *					searchMethod
+ *						- A custom search method that may allow for server side request integration.
+ *						This should point to a JavaScript method that can take up to two parameters.
+ *						This function should have the following format:
+ *
+ *						function myCustomFunction(searchTerms, thisInstance) {
+ *							//Let's assume the following function contacts the server and
+ *							//calls its second argument as a callback upon completion
+ *							makeServerRequest(searchTerms, function(result) {
+ *								//Test that request was successful
+ *								//Next format data in a manner that can be accepted by multiSelectJs
+ *								//Finally, call the multiSelectJs callback function
+ *								thisInstance.searchCallback(result.dataArray);
+ *							}
+ *						}
  *
  *	Attributes (on the initial element):
  *					data-value
@@ -137,7 +152,7 @@ function multiSelectJs(el, options) {
 	if(!!el) this.init(el, options);
 }
 
-function msData(label, value) {
+multiSelectJs.Data = function(label, value) {
 	this.label = label.trim();
 	this.value = value.trim().toUpperCase();
 }
@@ -145,7 +160,7 @@ function msData(label, value) {
 /**
  *	Array.isArray polyfill (mozilla)
  */
-if (!Array.isArray) {
+if(!Array.isArray) {
 	Array.isArray = function(arg) {
 		return Object.prototype.toString.call(arg) === '[object Array]';
 	};
@@ -221,6 +236,9 @@ multiSelectJs.prototype.parseOptions = function(options) {
 	
 	//Preselected options
 	if(Array.isArray(options.selections)) this.selections = multiSelectJs.parseData(options.selections);
+
+	//Custom search method
+	if(typeof options.searchMethod === "function") this.searchMethod = options.searchMethod;
 }
 
 multiSelectJs.prototype.buildGui = function(el) {
@@ -1052,7 +1070,7 @@ multiSelectJs.prototype.reset = function() {
 }
 
 multiSelectJs.isDataEqual = function(a, b) {
-	if(!(a instanceof msData) || !(b instanceof msData)) return false;
+	if(!(a instanceof multiSelectJs.Data) || !(b instanceof multiSelectJs.Data)) return false;
 	return (a.value === b.value);
 }
 

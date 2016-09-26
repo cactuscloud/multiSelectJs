@@ -63,41 +63,55 @@
 				</label>
 				<div id="ms1" class="multiSelectJs-placeholder"></div>
 			</div>
-		
-		
-		<div class="buttonArea">
-			Initialize multiSelectJs:
+			
 			<div>
-				<div id="preInitStuff">
-					<button type="button" onclick="init()">
-						Initialize multiSelectJs
-					</button>
-				</div>
-				<div id="postInitStuff" style="display: none">
-					<button type="button" onclick="dest()">
-						Destroy multiSelects
-					</button>
-				</div>
-				<button type="button" id="enableButton" onclick="toggleEnabled(this)">
-					Disable selects
-				</button>
+				<h3>
+					multiSelectJs with linked input field and simulated server side querying
+				</h3>
+				<label for="in2">
+					Linked input:
+				</label>
+				<input type="text" id="in2"/>
+				<label id="l2" for="s2">
+					Value = ""
+				</label>
+				<div id="ms2" class="multiSelectJs-placeholder"></div>
 			</div>
-		</div>
 		
+			
+			<div class="buttonArea">
+				Initialize multiSelectJs:
+				<div>
+					<div id="preInitStuff">
+						<button type="button" onclick="init()">
+							Initialize multiSelectJs
+						</button>
+					</div>
+					<div id="postInitStuff" style="display: none">
+						<button type="button" onclick="dest()">
+							Destroy multiSelects
+						</button>
+					</div>
+					<button type="button" id="enableButton" onclick="toggleEnabled(this)">
+						Disable selects
+					</button>
+				</div>
+			</div>
+		</form>
 		
 		
 		<script>
 		
-			var msCount = 2;
+			var msCount = 3;
 			var msArray = [];
 			
 			var data = [];
-			data.push(new msData("cat", "cat"));
-			data.push(new msData("cats", "cats"));
-			data.push(new msData("cat cat", "cat cat"));
-			data.push(new msData("dog", "dog"));
-			data.push(new msData("dogs", "dogs"));
-			data.push(new msData("dog dog", "dog dog"));
+			data.push(new multiSelectJs.Data("cat", "cat"));
+			data.push(new multiSelectJs.Data("cats", "cats"));
+			data.push(new multiSelectJs.Data("cat cat", "cat cat"));
+			data.push(new multiSelectJs.Data("dog", "dog"));
+			data.push(new multiSelectJs.Data("dogs", "dogs"));
+			data.push(new multiSelectJs.Data("dog dog", "dog dog"));
 			
 			var initiated = false;
 			
@@ -106,8 +120,9 @@
 				//0 - with linked input
 				options.push({duplicateInput:	"in0", data: data});
 				options.push({duplicateInput:	"in1", data: data,
-								selections: [new msData("cat", "cat"), new msData("dog", "dog")]});
-				
+								selections: [new multiSelectJs.Data("cat", "cat"),
+											new multiSelectJs.Data("dog", "dog")]});
+				options.push({duplicateInput:	"in2", searchMethod: fakeServerRequest});
 				
 				for(var i = 0; i < msCount; i++) {
 					msArray.push(new multiSelectJs("ms" + i, options[i]));
@@ -128,10 +143,18 @@
 					
 			}
 			
-			function getValues() {
-				
+			function fakeServerRequest(searchTerms, multiSelectInstance) {
+				window.setTimeout(function() {
+					//The actual search should now be handled by the server - or a custom JS function
+					//This is only for demonstrative purposes, so it will be handled here.
+					var out = [];
+					for(var i = 0, j = data.length; i < j; i++) {
+						if(data[i].label.toUpperCase().indexOf(searchTerms.toUpperCase()) !== -1) out.push(data[i]);
+					}
+					//Now we have our result - return the data to the multiSelect
+					multiSelectInstance.searchCallback(out);
+				}, 1500);
 			}
-		
 		
 		</script>
 	
