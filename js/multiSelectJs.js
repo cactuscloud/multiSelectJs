@@ -92,8 +92,9 @@ function multiSelectJs(el, options) {
 	//Initialization variables
 	this.initialized = false;
 	this.initializing = false;
-	this.hasRequest = false;//Is there a current server request being fired
 	
+	//State variables
+	this.hasRequest = false;//Is there a current server request being fired	
 	this.uId = null;
 	
 	//Behavioral settings
@@ -248,6 +249,7 @@ multiSelectJs.prototype.buildGui = function(el) {
 	var main = doc.createElement("div");
 	main.className = "multiSelectJs";
 	main.tabIndex = 0;
+	main.innerHTML = "<div class=\"multiSelectJs-loader\"></div>";
 	
 	//Build selected item area
 	var selectionArea = doc.createElement("div");
@@ -298,10 +300,13 @@ multiSelectJs.prototype.buildGui = function(el) {
 multiSelectJs.prototype.setEventListeners = function() {
 	if(this.form !== null) $(this.form).on("reset." + this.uId, this.reset.bind(this));
 	
-	$(this.main).on("click." + this.uId, this.focusInput.bind(this));
+	$(this.main).on("click." + this.uId, this.mainClick.bind(this));
 	$(this.main).on("focus." + this.uId, this.focusInput.bind(this));
+	$(this.main).on("keydown." + this.uId, this.inputKeyDown.bind(this));
 	
-	$(this.input).on("input." + this.uId, this.inputChange.bind(this));
+	//Split due to ie - great!
+	$(this.input).on("keyup." + this.uId, this.inputChanged.bind(this));
+	
 	$(this.input).on("keydown." + this.uId, this.inputKeyDown.bind(this));
 	$(this.input).on("blur." + this.uId, this.blurInput.bind(this));
 	
@@ -311,7 +316,18 @@ multiSelectJs.prototype.setEventListeners = function() {
     $(window).on("beforeunload." + this.uId, this.hideDropdown.bind(this));
 	
 	$(document.body).on("click." + this.uId, this.hideDropdown.bind(this));
+	
+	$(this.input).on("copy." + this.uId + " cut." + this.uId, this.copy.bind(this));
 }
+
+multiSelectJs.prototype.copy = function(ev) {
+	ev.preventDefault();
+	if(window.clipboardData) window.clipboardData.setData("Text", this.searchTerms);
+	else {
+		//do
+	}
+}
+
 
 /**
  *	The multiSelectJs destructor
@@ -352,6 +368,7 @@ multiSelectJs.prototype.destroy = function() {
 	this.placeholder = null;
 	this.dropdownVisible = false;
 	this.uId = null;
+	this.hasRequest = false;
 	this.initialized = false;
 	this.initializing = false;
 	//Clear template DOM data
@@ -363,28 +380,43 @@ multiSelectJs.prototype.destroy = function() {
 	} catch(ex) {}
 }
 
-multiSelectJs.prototype.focusInput = function(ev) {
+multiSelectJs.prototype.mainClick = function(ev) {
+	this.focusInput(ev, true);
+}
+
+
+multiSelectJs.prototype.focusInput = function(ev, noDelay) {
+	ev.preventDefault();
 	ev.stopPropagation();
 	if(this.selections.length < this.maxSelections) {
 		var input = this.input;
 		input.style.display = "inline";
 		$(this.placeholder).addClass("inputVisible");
-		var l = input.innerHTML.length;
-		if(l === 0) this.showPlaceholder();
+		//Another fix for ie
+		var firstChild = input.firstChild;
+		var isEmpty = this.isInputEmpty();
+		if(isEmpty && !this.hasRequest) this.showPlaceholder();
 		else {
+			var l = this.searchTerms.length;
 			this.showDropdown();
 			//Set cursor to end position - if click occurred to the right of the text
-			if(ev.clientX > $(input).offset().left + $(input).width()) {
+			if(!isEmpty && ev.clientX > $(input).offset().left + $(input).width()) {
 				var selection = window.getSelection();
 				range = document.createRange();
-				range.setStart(input.firstChild, l);
-				range.setEnd(input.firstChild, l);
+				range.setStart(firstChild, l);
+				range.setEnd(firstChild, l);
 				selection.removeAllRanges();
 				selection.addRange(range);
-			}	
+			}
 		}
-		input.focus();
-	} else this.blurInput();
+		//Avoid re-entrancy issues
+		if(noDelay === true) this.input.focus();
+		else {
+			window.setTimeout(function() {
+				this.input.focus();
+			}.bind(this), 0);
+		}
+	}
 }
 
 multiSelectJs.prototype.dropdownClick = function(ev) {
@@ -392,10 +424,12 @@ multiSelectJs.prototype.dropdownClick = function(ev) {
 }
 
 multiSelectJs.prototype.blurInput = function() {
-	if(this.input.innerHTML === "" || this.selections.length >= this.maxSelections) {
+	var firstChildNull = (this.input.firstChild === null);//ie fix
+	var noTerms = (this.searchTerms === "");
+	if(noTerms || firstChildNull || this.selections.length >= this.maxSelections) {
 		this.input.style.display = "none";
 		$(this.placeholder).removeClass("inputVisible");
-		if(this.input.innerHTML === "") this.placeholder.style.display = "inline";
+		if(noTerms || firstChildNull) this.placeholder.style.display = "inline";
 	}
 }
 
@@ -409,27 +443,35 @@ multiSelectJs.prototype.hidePlaceholder = function() {
 	this.placeholder.style.display = "none";
 }
 
-multiSelectJs.prototype.inputChange = function() {
-	if(!this.initialized) return;
+multiSelectJs.prototype.inputChanged = function() {
+	if(!this.initialized || this.selections.length >= this.maxSelections) return;
 	var t = this.input;
 	
 	//Sanitize the contents	
-	var newValue = t.innerHTML.replace(this.forbiddenCharacters, "");
-	var lengthDifference = t.innerHTML.length - newValue.length;
+	var originalContent = $(t).text().trim();
+	var newValue = originalContent.replace(this.forbiddenCharacters, "");
+	var lengthDifference = originalContent.length - newValue.length;
 	
 	//Get the current caret position
 	var pos = 0, containerEl = null, sel = window.getSelection();
 	var range = sel.getRangeAt(0);
-	if (range.commonAncestorContainer.parentNode == t) {
-		pos = range.startOffset - (lengthDifference > 0 ? lengthDifference : 0);
-	}
+	if (range.commonAncestorContainer.parentNode == t) pos = range.startOffset - (lengthDifference > 0 ? lengthDifference : 0);
 	
 	//Set the sanitized contents
-	t.innerHTML = newValue;
+	$(t).text(newValue);
+	
+	var isEmpty = this.isInputEmpty() && newValue.length === 0;//ie fix
+	
+	if(isEmpty) {
+		this.searchTerms = "";
+		this.hideDropdown();
+		this.showPlaceholder();
+		return;
+	}
 	
 	//Set the new caret position
 	var l = newValue.length;
-	if(l > 0) {
+	if(!isEmpty) {
 		var selection = window.getSelection();
 		pos = Math.min(l, pos);
 		range = document.createRange();
@@ -449,19 +491,21 @@ multiSelectJs.prototype.inputChange = function() {
 	}
 	
 	this.searchTerms = newValue;
-	//Set the placeholder
-	if(newValue.length == 0) {
-		this.showPlaceholder();
-		this.hideDropdown();
-	} else {
-		this.hidePlaceholder();
-		//Make sure a close dialog can be reopened with the same search terms
-		if(this.searchTerms === this.lastSearch) this.showDropdown();
-		else this.performSearch();
-	}
+
+	this.hidePlaceholder();
+	//Make sure a close dialog can be reopened with the same search terms
+	if(this.searchTerms === this.lastSearch && !this.hasRequest) this.showDropdown();
+	else this.performSearch();
+	
+}
+
+//For ie.
+multiSelectJs.prototype.isInputEmpty = function() {
+	return (this.input.firstChild === null || this.searchTerms === null || this.searchTerms.length === 0);
 }
 
 multiSelectJs.prototype.inputKeyDown = function(ev) {
+	ev.stopPropagation();
 	if(!this.initialized) return;
 	var key = ev.keyCode;
 	//The enter key
@@ -474,11 +518,15 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 		} else if(this.form != null) this.form.submit();//Submit the form
 	//Backspace
 	} else if(key === 8) {
-		//If the input is empty, delete the latest selection
-		if(this.input.innerHTML.length === 0 && this.selections.length !== 0) {
-			this.selections.pop();
-			this.updateSelectedData();
+		if(this.isInputEmpty()) {
+			ev.preventDefault();
+			this.hideDropdown();
 			this.lastSearch = null;
+			//If the input is empty, delete the latest selection
+			if(this.selections.length !== 0) {
+				this.selections.pop();
+				this.updateSelectedData();
+			}
 		}
 	}
 	//Down arrow
@@ -565,6 +613,8 @@ multiSelectJs.prototype.updateSelectedData = function() {
 			this.prepareToPositionDropdown();
 		}
 	}
+	//Show input if more options can be selected
+	if(this.selections.length < this.maxSelections) $(this.main).removeClass("full").focus();
 }
 
 /**
@@ -617,11 +667,13 @@ multiSelectJs.prototype.selectOption = function(optionReference) {
 				$(this.hoveredReference).addClass("hovered");
 			}
 		}
-		
 		//Hide dropdown if the maximum number of selections has been reached
 		if(this.selections.length >= this.maxSelections) {
 			this.hideDropdown();
-			this.blurInput();
+			$(this.input).text("");
+			this.searchTerms = "";
+			this.lastSearch = null;
+			$(this.main).addClass("full").focus();
 		}
 		//Set no results message
 		if(j === 0) this.showNoResultsMessage();
@@ -725,12 +777,17 @@ multiSelectJs.prototype.removeSelection = function(ev) {
  */
 multiSelectJs.prototype.performSearch = function() {
 	//Ensure only one request fires at a time and that the search terms exist and have changed
-	if(this.hasRequest === true || typeof this.searchTerms !== "string" || this.searchTerms.trim() === "" || this.searchTerms == this.lastSearch) return;
-	this.hasRequest = true;
+	if(this.hasRequest || typeof this.searchTerms !== "string" || this.searchTerms.trim() === "" || this.searchTerms === this.lastSearch) return;
 	try {
+		this.hasRequest = true;
 		this.lastSearch = this.searchTerms;
+		if(this.searchMethod !== this.localSearch) {
+			$(this.main).addClass("loading");
+			this.hideDropdown();
+		}
 		this.searchMethod(this.searchTerms, this);
 	} catch(ex) {
+		$(this.main).removeClass("loading");
 		this.hasRequest = false;
 	}
 }
@@ -841,18 +898,22 @@ multiSelectJs.prototype.findClosestMatches = function(dataSet, searchString) {
  *	supplied data and trigger the appropriate GUI events as required.
  */
 multiSelectJs.prototype.searchCallback = function(data) {
-	var hadRequest = this.hasRequest;
+	if(this.searchTerms === null || this.searchTerms.trim() === "") {
+		this.lastSearch = this.searchTerms;
+		$(this.main).removeClass("loading");
+	} else if(this.searchTerms !== this.lastSearch) {
+		this.hasRequest = false;
+		this.performSearch();
+		return;
+	} else {
+		//Get data
+		this.results = multiSelectJs.parseData(data);
+		//Populate dropdown
+		this.populateDropdown();
+		$(this.main).removeClass("loading");
+		this.showDropdown();
+	}
 	this.hasRequest = false;
-		
-	//Get data
-	this.results = multiSelectJs.parseData(data);
-
-	//Populate dropdown
-	this.populateDropdown();
-
-	this.showDropdown();
-	
-	if(hadRequest) this.performSearch();
 }
 
 /**
@@ -962,7 +1023,7 @@ multiSelectJs.prototype.populateDropdown = function() {
 	else for(var i = 0; i < j; i++) {
 		t = doc.createElement("div");
 		t.className = "multiSelectJs-option";
-		t.innerHTML = results[i].label;
+		$(t).text(results[i].label);
 		t.value = results[i];
 		t.onmouseover = this.optionEnter.bind(this);
 		t.onmouseout = this.optionExit.bind(this);
@@ -976,7 +1037,7 @@ multiSelectJs.prototype.showNoResultsMessage = function() {
 	this.dropdown.innerHTML = "";
 	var t = document.createElement("div");
 	t.className = "multiSelectJs-noResults";
-	t.innerHTML = this.noResultsMessage;
+	$(t).text(this.noResultsMessage);
 	t.onclick = this.hideDropdown.bind(this);
 	this.dropdown.appendChild(t);
 }
