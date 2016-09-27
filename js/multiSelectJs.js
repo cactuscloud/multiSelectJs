@@ -46,10 +46,10 @@
  *						This should point to a JavaScript method that can take up to two parameters.
  *						This function should have the following format:
  *
- *						function myCustomFunction(searchTerms, thisInstance) {
+ *						function myCustomFunction(searchTerms, currentSelections, thisInstance) {
  *							//Let's assume the following function contacts the server and
  *							//calls its second argument as a callback upon completion
- *							makeServerRequest(searchTerms, function(result) {
+ *							makeServerRequest(searchTerms, currentSelections, function(result) {
  *								//Test that request was successful
  *								//Next format data in a manner that can be accepted by multiSelectJs
  *								//Finally, call the multiSelectJs callback function
@@ -236,10 +236,13 @@ multiSelectJs.prototype.parseOptions = function(options) {
 	if(typeof options.delimiter === "string") this.delimiter = options.delimiter;
 	
 	//Preselected options
-	if(Array.isArray(options.selections)) this.selections = multiSelectJs.parseData(options.selections);
+	if(!!options.selections) this.selections = (multiSelectJs.parseData(options.selections) || []);
 
 	//Custom search method
-	if(typeof options.searchMethod === "function") this.searchMethod = options.searchMethod;
+	if(!!options.searchMethod) {
+		if(typeof options.searchMethod === "function") this.searchMethod = options.searchMethod;
+		else throw new TypeError("An invalid searchMethod function has been provided to multiSelectJs");
+	}
 }
 
 multiSelectJs.prototype.buildGui = function(el) {
@@ -785,7 +788,7 @@ multiSelectJs.prototype.performSearch = function() {
 			$(this.main).addClass("loading");
 			this.hideDropdown();
 		}
-		this.searchMethod(this.searchTerms, this);
+		this.searchMethod(this.searchTerms, this.selections, this);
 	} catch(ex) {
 		$(this.main).removeClass("loading");
 		this.hasRequest = false;
@@ -797,7 +800,7 @@ multiSelectJs.prototype.performSearch = function() {
  *	variable and passes them to this.searchCallback.  The search terms passed will not be empty.
  */
 multiSelectJs.prototype.localSearch = function(terms) {
-	var res;	
+	var res;
 	//Do search here
 	if(!Array.isArray(this.dataSet)) res = null;
 	else {
@@ -1131,7 +1134,7 @@ multiSelectJs.prototype.reset = function() {
 }
 
 multiSelectJs.isDataEqual = function(a, b) {
-	if(!(a instanceof multiSelectJs.Data) || !(b instanceof multiSelectJs.Data)) return false;
+	if(a === null || b === null || typeof a.value !== "string" || typeof b.value !== "string") return false;
 	return (a.value === b.value);
 }
 
@@ -1141,6 +1144,7 @@ multiSelectJs.isDataEqual = function(a, b) {
  *		-	As above - but JSON encoded
  */
 multiSelectJs.parseData = function(data) {
+	if(data === null) return [];
 	var out = [];
 	var dataType = typeof data;
 	if(dataType === "string") {
@@ -1150,6 +1154,7 @@ multiSelectJs.parseData = function(data) {
 			throw new TypeError("Invalid " + dataType + " entered into multiSelectJs.parseData().  If using a string, it must represent a JSON encoded array of objects with 'value' and 'label' parameters as strings.");
 		}
 	}
+	if(data === []) return [];
 	if(Array.isArray(data)) {
 		for(var i = 0, j = data.length; i < j; i++) {
 			var t = data[i];

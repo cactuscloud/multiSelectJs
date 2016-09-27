@@ -99,13 +99,13 @@ Some instructions: (not too many)
 					
 				searchMethod
 					- A custom search method that may allow for server side request integration.
-					This should point to a JavaScript method that can take up to two parameters.
+					This should point to a JavaScript method that can take up to three parameters.
 					This function should have the following format:
 
-					function myCustomFunction(searchTerms, thisInstance) {
+					function myCustomFunction(searchTerms, currentSelections, thisInstance) {
 						//Let's assume the following function contacts the server and
 						//calls its second argument as a callback upon completion
-						makeServerRequest(searchTerms, function(result) {
+						makeServerRequest(searchTerms, currentSelections, function(result) {
 							//Test that request was successful
 							//Next format data in a manner that can be accepted by multiSelectJs
 							//Finally, call the multiSelectJs callback function
