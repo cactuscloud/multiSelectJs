@@ -36,9 +36,10 @@
 		</h2>
 		
 		<form>
+		
 			<div>
 				<h3>
-					multiSelectJs with linked input field
+					multiSelectJs with no options specified (and no data)
 				</h3>
 				<label for="in0">
 					Linked input:
@@ -52,7 +53,7 @@
 			
 			<div>
 				<h3>
-					multiSelectJs with linked input field and preselected data
+					multiSelectJs with linked input field
 				</h3>
 				<label for="in1">
 					Linked input:
@@ -66,7 +67,7 @@
 			
 			<div>
 				<h3>
-					multiSelectJs with linked input field and simulated server side querying
+					multiSelectJs with linked input field and preselected data
 				</h3>
 				<label for="in2">
 					Linked input:
@@ -76,6 +77,20 @@
 					Value = ""
 				</label>
 				<div id="ms2" class="multiSelectJs-placeholder"></div>
+			</div>
+			
+			<div>
+				<h3>
+					multiSelectJs with linked input field and simulated server side querying
+				</h3>
+				<label for="in3">
+					Linked input:
+				</label>
+				<input type="text" id="in3"/>
+				<label id="l3" for="s3">
+					Value = ""
+				</label>
+				<div id="ms3" class="multiSelectJs-placeholder"></div>
 			</div>
 		
 			
@@ -101,8 +116,8 @@
 		
 		
 		<script>
-		
-			var msCount = 3;
+			var lowest = 0;
+			var msCount = 4;
 			var msArray = [];
 			
 			var data = [];
@@ -118,13 +133,16 @@
 			function init() {
 				var options = [];
 				//0 - with linked input
+				options.push(null);
+
 				options.push({duplicateInput:	"in0", data: data});
 				options.push({duplicateInput:	"in1", data: data,
 								selections: [new multiSelectJs.Data("cat", "cat"),
-											new multiSelectJs.Data("dog", "dog")]});
+											new multiSelectJs.Data("dog", "dog"),
+											new multiSelectJs.Data("dogs", "dogs")]});
 				options.push({duplicateInput:	"in2", searchMethod: fakeServerRequest});
 				
-				for(var i = 0; i < msCount; i++) {
+				for(var i = lowest; i < msCount; i++) {
 					msArray.push(new multiSelectJs("ms" + i, options[i]));
 				}
 				document.getElementById("preInitStuff").style.display = "none";
@@ -136,7 +154,7 @@
 				initiated = false;
 				document.getElementById("postInitStuff").style.display = "none";
 				document.getElementById("preInitStuff").style.display = "block";
-				for(var i = 0; i < msCount; i++) {
+				for(var i = lowest; i < msCount; i++) {
 					msArray[i].destroy();
 				}
 				msArray = [];
@@ -148,7 +166,7 @@
 					//The actual search should now be handled by the server - or a custom JS function
 					//This is only for demonstrative purposes, so it will be handled here.
 					var out = [];
-					for(var i = 0, j = data.length; i < j; i++) {
+					for(var i = lowest, j = data.length; i < j; i++) {
 						if(data[i].label.toUpperCase().indexOf(searchTerms.toUpperCase()) !== -1) out.push(data[i]);
 					}
 					//Now we have our result - return the data to the multiSelect
