@@ -1,3 +1,13 @@
+/*
+TO DO:
+
+	Double click after the text should highlight it
+	
+	Remove modifier key events for ctrl and alt
+
+*/
+
+
 /**
  *	Script:			multiSelectJs
  *	Author:			Cactus Cloud
@@ -309,6 +319,7 @@ multiSelectJs.prototype.setEventListeners = function() {
 	if(this.form !== null) $(this.form).on("reset." + this.uId, this.reset.bind(this));
 	
 	$(this.main).on("click." + this.uId, this.mainClick.bind(this));
+	$(this.main).on("dblclick." + this.uId, this.mainDoubleClick.bind(this));
 	$(this.main).on("focus." + this.uId, this.focusInput.bind(this));
 	$(this.main).on("keydown." + this.uId, this.inputKeyDown.bind(this));
 	
@@ -325,17 +336,20 @@ multiSelectJs.prototype.setEventListeners = function() {
 	
 	$(document.body).on("click." + this.uId, this.hideDropdown.bind(this));
 	
-	$(this.input).on("copy." + this.uId + " cut." + this.uId, this.copy.bind(this));
+	$(this.input).on("copy." + this.uId + " cut." + this.uId, this.copyEvent.bind(this));
+	$(this.input).on("paste." + this.uId, this.pasteEvent.bind(this));
 }
 
-multiSelectJs.prototype.copy = function(ev) {
+multiSelectJs.prototype.copyEvent = function(ev) {
 	ev.preventDefault();
+	console.log(ev);
 	if(window.clipboardData) window.clipboardData.setData("Text", this.searchTerms);
-	else {
-		//do
-	}
+	else return false;
 }
 
+multiSelectJs.prototype.pasteEvent = function(ev) {
+	this.updateInputValue();
+}
 
 /**
  *	The multiSelectJs destructor
@@ -396,8 +410,11 @@ multiSelectJs.prototype.mainClick = function(ev) {
 	this.focusInput(ev, true);
 }
 
+multiSelectJs.prototype.mainDoubleClick = function(ev) {
+	this.focusInput(ev, true, true);
+}
 
-multiSelectJs.prototype.focusInput = function(ev, noDelay) {
+multiSelectJs.prototype.focusInput = function(ev, noDelay, selectAll) {
 	if(!this.initialized || this.focusing) return;
 	this.focusing = true;
 	//ev.preventDefault();
@@ -414,10 +431,10 @@ multiSelectJs.prototype.focusInput = function(ev, noDelay) {
 			var l = this.searchTerms.length;
 			this.showDropdown();
 			//Set cursor to end position - if click occurred to the right of the text
-			if(!isEmpty && ev.clientX > $(input).offset().left + $(input).width()) {
+			if(!isEmpty && (ev.clientX > $(input).offset().left + $(input).width() || selectAll === true)) {
 				var selection = window.getSelection();
 				range = document.createRange();
-				range.setStart(firstChild, l);
+				range.setStart(firstChild, (selectAll === true ? 0 : l));
 				range.setEnd(firstChild, l);
 				selection.removeAllRanges();
 				selection.addRange(range);
@@ -462,8 +479,14 @@ multiSelectJs.prototype.hidePlaceholder = function() {
 multiSelectJs.prototype.inputChanged = function(ev) {
 	if(!this.initialized || this.updating || this.selections.length >= this.maxSelections) return;
 	var key = ev.keyCode;
-	//If key pressed is enter (13), escape (27), up (38), or down (40)
-	if(key === 13 || key === 27 || key === 38 || key === 40) return;
+	console.log(key);
+	//If ctrl is held, or key pressed is enter (13), ctrl (17), shift(16), escape (27), left (37), up (38),
+	//right (39), or down (40)
+	if(ev.ctrlKey || key === 13 || key === 16 || key === 17 || key === 27 || key === 37 || key === 38 || key === 39 || key === 40) return;
+	this.updateInputValue();
+}
+
+multiSelectJs.prototype.updateInputValue = function() {
 	this.updating = true;
 	
 	var t = this.input;
