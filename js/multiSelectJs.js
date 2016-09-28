@@ -458,9 +458,13 @@ multiSelectJs.prototype.hidePlaceholder = function() {
 	this.placeholder.style.display = "none";
 }
 
-multiSelectJs.prototype.inputChanged = function() {
+multiSelectJs.prototype.inputChanged = function(ev) {
 	if(!this.initialized || this.updating || this.selections.length >= this.maxSelections) return;
+	var key = ev.keyCode;
+	//If key pressed is enter (13), escape (27), up (38), or down (40)
+	if(key === 13 || key === 27 || key === 38 || key === 40) return;
 	this.updating = true;
+	
 	var t = this.input;
 	
 	//Sanitize the contents	
@@ -531,7 +535,8 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 		ev.preventDefault();
 		//Select the currently highlighted option
 		if(this.dropdownVisible) {
-			if(this.hoveredData != null) this.selectOption(this.hoveredReference);
+			if(this.hoveredData !== null) this.selectOption(this.hoveredReference);
+			else if(this.results === null || this.results.length === 0) this.hideDropdown();
 		} else if(this.form != null) this.form.submit();//Submit the form
 	//Backspace
 	} else if(key === 8) {
@@ -551,12 +556,14 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 		//Stop the page from scrolling
 		ev.preventDefault();
 		if(this.dropdownVisible) this.incrementHoverIndex(1);
+		else if(this.searchTerms !== null && this.searchTerms.length > 0 && this.selections.length < this.maxSelections) this.showDropdown();
 	}
 	//Up arrow
 	else if(key === 38) {
 		//Stop the page from scrolling
 		ev.preventDefault();
 		if(this.dropdownVisible) this.incrementHoverIndex(-1);
+		else if(this.searchTerms !== null && this.searchTerms.length > 0 && this.selections.length < this.maxSelections) this.showDropdown();
 	}
 	//Escape
 	else if(key == 27) this.hideDropdown();
@@ -1024,6 +1031,8 @@ multiSelectJs.prototype.hideDropdown = function(immediate) {
 	else $(this.dropdown).stop().fadeOut();
 	this.hoveredData = null;
 	this.hoveredReference = null;
+	//Deselect the options in the gui
+	$(this.resultReferences).removeClass("hovered");
 	this.dropdownVisible = false;
 }
 
