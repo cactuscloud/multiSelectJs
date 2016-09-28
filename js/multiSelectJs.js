@@ -1,13 +1,3 @@
-/*
-TO DO:
-
-	Double click after the text should highlight it
-	
-	Remove modifier key events for ctrl and alt
-
-*/
-
-
 /**
  *	Script:			multiSelectJs
  *	Author:			Cactus Cloud
@@ -342,7 +332,6 @@ multiSelectJs.prototype.setEventListeners = function() {
 
 multiSelectJs.prototype.copyEvent = function(ev) {
 	ev.preventDefault();
-	console.log(ev);
 	if(window.clipboardData) window.clipboardData.setData("Text", this.searchTerms);
 	else return false;
 }
@@ -479,7 +468,6 @@ multiSelectJs.prototype.hidePlaceholder = function() {
 multiSelectJs.prototype.inputChanged = function(ev) {
 	if(!this.initialized || this.updating || this.selections.length >= this.maxSelections) return;
 	var key = ev.keyCode;
-	console.log(key);
 	//If ctrl is held, or key pressed is enter (13), ctrl (17), shift(16), escape (27), left (37), up (38),
 	//right (39), or down (40)
 	if(ev.ctrlKey || key === 13 || key === 16 || key === 17 || key === 27 || key === 37 || key === 38 || key === 39 || key === 40) return;

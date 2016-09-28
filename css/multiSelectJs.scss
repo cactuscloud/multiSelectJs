@@ -205,6 +205,8 @@ $disableBackground:	darken($backgroundColour, 5%);
 	border: 1px solid $borderColour;
 	border-top: none;
 	z-index: 9001;
+	overflow-y: auto;
+	
 	@include noSelect();
 	
 	.multiSelectJs-option {
