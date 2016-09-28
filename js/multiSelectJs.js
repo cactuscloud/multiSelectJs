@@ -271,13 +271,14 @@ multiSelectJs.prototype.buildGui = function(el) {
 	var input = doc.createElement("span");
 	input.setAttribute("contenteditable", "true");
 	input.className = "multiSelectJs-input";
+	input.setAttribute("spellcheck", "false");
 	main.appendChild(input);
 	
 	//Create the placeholder
 	var placeholder = doc.createElement("span");
 	placeholder.className = "multiSelectJs-placeholderText";
 	placeholder.innerHTML = this.placeholderText;
-	placeholder.setAttribute("spellcheck", false);
+	placeholder.setAttribute("spellcheck", "false");
 	main.appendChild(placeholder);	
 	
 	//Create the dropdown
