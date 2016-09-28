@@ -92,7 +92,10 @@ function multiSelectJs(el, options) {
 	//Initialization variables
 	this.initialized = false;
 	this.initializing = false;
+	
+	//State variables
 	this.updating = false;
+	this.focusing = false;
 	
 	//State variables
 	this.hasRequest = false;//Is there a current server request being fired	
@@ -174,7 +177,10 @@ multiSelectJs.prototype.init = function(el, options) {
 	//Check whether already initialized/initializing
 	if(this.initialized) return;
 	this.initializing = true;	
+	
+	//Set state variables
 	this.updating = false;
+	this.focusing = false;
 	
 	this.parseOptions(options);
 	
@@ -335,6 +341,7 @@ multiSelectJs.prototype.copy = function(ev) {
  */
 multiSelectJs.prototype.destroy = function() {
 	this.updating = true;
+	this.focusing = true;
 	//Remove event listeners
 	try {
 		$(document.body).off("." + this.uId);
@@ -381,6 +388,7 @@ multiSelectJs.prototype.destroy = function() {
 		this.form = null;
 	} catch(ex) {}
 	this.updating = false;
+	this.focusing = false;
 }
 
 multiSelectJs.prototype.mainClick = function(ev) {
@@ -389,8 +397,9 @@ multiSelectJs.prototype.mainClick = function(ev) {
 
 
 multiSelectJs.prototype.focusInput = function(ev, noDelay) {
-	if(!this.initialized) return;
-	ev.preventDefault();
+	if(!this.initialized || this.focusing) return;
+	this.focusing = true;
+	//ev.preventDefault();
 	ev.stopPropagation();
 	if(this.selections.length < this.maxSelections) {
 		var input = this.input;
@@ -414,13 +423,14 @@ multiSelectJs.prototype.focusInput = function(ev, noDelay) {
 			}
 		}
 		//Avoid re-entrancy issues
-		if(noDelay === true) this.input.focus();
+		if(noDelay === true) $(this.input).focus();
 		else {
 			window.setTimeout(function() {
-				this.input.focus();
+				$(this.input).focus();
 			}.bind(this), 0);
 		}
 	}
+	this.focusing = false;
 }
 
 multiSelectJs.prototype.dropdownClick = function(ev) {
