@@ -7,6 +7,12 @@ Purpose:
 	server-side database searching.
 - 	To be Salesforce compatible
 
+Compatibility:
+-	Firefox
+-	Chrome
+-	ie9+
+-	Safari 5+ (Tested with Safari 5 (Windows) and Safari 10 (OSX El Capitan)
+
 Notes: (Important stuff)
 - This requires JQuery
 

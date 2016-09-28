@@ -469,9 +469,9 @@ multiSelectJs.prototype.inputChanged = function() {
 	var lengthDifference = originalContent.length - newValue.length;
 	
 	//Get the current caret position
-	var pos = 0, containerEl = null, sel = window.getSelection();
-	var range = sel.getRangeAt(0);
-	if (range.commonAncestorContainer.parentNode == t) pos = range.startOffset - (lengthDifference > 0 ? lengthDifference : 0);
+	var pos = 0, containerEl = null, sel = window.getSelection(), range = null;
+	if(sel.rangeCount !== null && sel.rangeCount > 0) range = sel.getRangeAt(0);
+	if(range !== null && range.commonAncestorContainer.parentNode == t) pos = range.startOffset - (lengthDifference > 0 ? lengthDifference : 0);
 	
 	//Set the sanitized contents
 	$(t).text(newValue);

@@ -135,12 +135,12 @@
 				//0 - with linked input
 				options.push(null);
 
-				options.push({duplicateInput:	"in0", data: data});
-				options.push({duplicateInput:	"in1", data: data,
+				options.push({duplicateInput:	"in1", data: data});
+				options.push({duplicateInput:	"in2", data: data,
 								selections: [new multiSelectJs.Data("cat", "cat"),
 											new multiSelectJs.Data("dog", "dog"),
 											new multiSelectJs.Data("dogs", "dogs")]});
-				options.push({duplicateInput:	"in2", searchMethod: fakeServerRequest});
+				options.push({duplicateInput:	"in3", searchMethod: fakeServerRequest});
 				
 				for(var i = lowest; i < msCount; i++) {
 					msArray.push(new multiSelectJs("ms" + i, options[i]));
