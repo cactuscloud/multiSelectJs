@@ -78,6 +78,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 	border-radius: $borderRadius;
 	background-color: $backgroundColour;
 	color: $textColour;
+	text-align: left;
 	.selections {
 		display: inline;
 		@include noSelect();
@@ -206,7 +207,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 	border-top: none;
 	z-index: 9001;
 	overflow-y: auto;
-	
+	text-align: left;
 	@include noSelect();
 	
 	.multiSelectJs-option {
