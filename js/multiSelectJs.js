@@ -1205,6 +1205,15 @@ multiSelectJs.prototype.reset = function() {
 	this.updateSelectedData();
 }
 
+multiSelectJs.prototype.blur = function() {
+	this.blurInput();
+}
+
+multiSelectJs.prototype.focus = function() {
+	this.focusInput();
+}
+
+
 
 /*
  *	Static functions

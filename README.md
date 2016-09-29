@@ -200,6 +200,12 @@ Some instructions: (not too many)
 
 				reset()
 					Clears the currently selected data from the multiSelectJs instance.
+					
+				focus()
+					Focusses the multiSelectJs
+					
+				blur()
+					Blurs the multiSelectJs
 				
 			4.	Accessing the multiSelectJs class after initialization:
 
