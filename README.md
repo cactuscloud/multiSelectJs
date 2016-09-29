@@ -106,7 +106,7 @@ Some instructions: (not too many)
 					This value should be of the data type specified above (see point 1).
 					
 				searchMethod
-					- A custom search method that may allow for server side request integration.
+					A custom search method that may allow for server side request integration.
 					This should point to a JavaScript method that can take up to three parameters.
 					This function should have the following format:
 
@@ -123,6 +123,11 @@ Some instructions: (not too many)
 					
 					There is an example of this in the demo file - just using a timer instead of 
 					an actual server side search.
+					
+				submitEvent
+					The event to fire when the multiSelectJs is submitted (i.e. when the multiSelectJs
+					dropdown is hidden and the enter key is struck).  If this option is not specified,
+					and the multiSelectJs is within a form, that form will be submitted as normal.
 										
 			3.	You can use the following JavaScript functions on an initialized fancySelectJs object:
 				

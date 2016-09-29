@@ -58,6 +58,8 @@
  *								thisInstance.searchCallback(result.dataArray);
  *							}
  *						}
+ *					submitEvent
+ *						- The event to fire when the multiSelectJs is subitted (i.e. to trigger form submission)
  *
  *	Attributes (on the initial element):
  *					data-value
@@ -153,6 +155,9 @@ function multiSelectJs(el, options) {
     this.dropdownY = 0;
     this.dropdownWidth = 0;
 	this.dropdownVisible = false;
+	
+	//Events
+	this.submitEvent = null;
 	
 	//Other
 	this.forbiddenCharacters = /[^a-zA-Z0-9 \+\=\-\*\$\%\.\,\!\@\#\&\(\)\;\"\'\?]/;
@@ -258,6 +263,12 @@ multiSelectJs.prototype.parseOptions = function(options) {
 		if(typeof options.searchMethod === "function") this.searchMethod = options.searchMethod;
 		else throw new TypeError("An invalid searchMethod function has been provided to multiSelectJs");
 	}
+	
+	//Submit event
+	if(!!options.submitEvent) {
+		if(typeof options.submitEvent === "function") this.submitEvent = options.submitEvent;
+		else throw new TypeError("An invalid submitEvent function has been provided to multiSelectJs");
+	} 
 }
 
 multiSelectJs.prototype.buildGui = function(el) {
@@ -384,6 +395,7 @@ multiSelectJs.prototype.destroy = function() {
 		this.main = null;
 	} catch(ex) {}
 	//Remove remaining references and reset variables
+	this.submitEvent = null;
 	this.scrollParent = null;
 	this.selectionArea = null;
 	this.hoveredReference = null;
@@ -558,7 +570,24 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 		if(this.dropdownVisible) {
 			if(this.hoveredData !== null) this.selectOption(this.hoveredReference);
 			else if(this.results === null || this.results.length === 0) this.hideDropdown();
-		} else if(this.form != null) this.form.submit();//Submit the form
+		} else if(this.submitEvent !== null) this.submitEvent();
+		else if(this.form !== null) {
+			//Just calling form.submit() will not fire the onclick handler
+			//Check if there is already a submit button
+			var btns = $(this.form).find("input[type='submit']");
+			if(btns.length > 0) btns[0].click();
+			else {
+				//Otherwise submit a form with a temporary button
+				var temp = document.createElement("input");
+				temp.setAttribute("type", "submit");
+				temp.style.position = "absolute";
+				temp.style.visibility = "hidden";
+				this.form.appendChild(temp);
+				temp.click();
+				this.form.removeChild(temp);
+				temp = null;
+			}
+		}
 	//Backspace
 	} else if(key === 8) {
 		if(this.isInputEmpty()) {
