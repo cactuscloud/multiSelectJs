@@ -22,6 +22,8 @@
  *						- A text or hidden input field to store the selected values in.  This is useful for
  *						integration with other frameworks, such as SalesForce.  This can be either a
  *						text ID or a reference to an actual text or hidden element.
+ *					id
+ *						- The HTML ID to apply to the new multiSelectJs main div element
  *					data
  *						- Any preloaded data to insert into the multiSelectJs
  *					scrollParent
@@ -120,6 +122,7 @@ function multiSelectJs(el, options) {
 	
 	//DOM status
 	this.mainHeight = null;
+	this.mainId = null;
 	
 	//Stored and selected data
 	this.dataSet = [];//The stored values from which the user can search
@@ -206,6 +209,11 @@ multiSelectJs.prototype.init = function(el, options) {
 
 multiSelectJs.prototype.parseOptions = function(options) {
 	if(!options) options = {};
+	
+	//Set main div ID
+	if(typeof options.id === "string") this.mainId = options.id;
+	else this.mainId = null;
+	
 	//Duplicate text input
 	var t = typeof options.duplicateInput;
 	if(t !== "undefined") {
@@ -257,6 +265,7 @@ multiSelectJs.prototype.buildGui = function(el) {
 	
 	//Build the main div
 	var main = doc.createElement("div");
+	if(this.mainId) main.id = this.mainId;
 	main.className = "multiSelectJs";
 	main.tabIndex = 0;
 	main.innerHTML = "<div class=\"multiSelectJs-loader\"></div>";

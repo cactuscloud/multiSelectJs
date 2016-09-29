@@ -61,8 +61,10 @@ Some instructions: (not too many)
 				This data also is always handled as an array, i.e:
 					[{value: "", label: ""}, ...]
 					
-			2.	The following options can be set in the constructor:
-			
+			2.	The following options may be set in the constructor:
+				id
+					The HTML ID to apply to the new multiSelectJs main div element
+					
 				duplicateInput
 					A text or hidden input field to store the selected values in.  This is useful for
 					integration with other frameworks, such as SalesForce, or for use with default
