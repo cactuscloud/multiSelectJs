@@ -172,7 +172,7 @@ if(!Array.isArray) {
 }
 
 multiSelectJs.prototype.init = function(el, options) {
-	this.uId = 'fs' + ("0000" + (Math.random()*Math.pow(36,4) << 0).toString(36)).slice(-4);
+	this.uId = 'fs' + ("0000" + (Math.random() * Math.pow(36,4) << 0).toString(36)).slice(-4);
 	
 	//Check whether already initialized/initializing
 	if(this.initialized) return;
@@ -642,6 +642,7 @@ multiSelectJs.prototype.updateSelectedData = function() {
 	if(this.duplicateInput !== null) this.duplicateInput.value = this.selectionString;
 	
 	//Update dropdown position
+	
 	if(this.dropdownVisible) {
 		var h = $(this.main).height();
 		if(h != this.mainHeight) {
@@ -651,7 +652,7 @@ multiSelectJs.prototype.updateSelectedData = function() {
 	}
 	
 	//Show input if more options can be selected
-	if(this.selections.length < this.maxSelections) $(this.main).removeClass("full").focus();
+	if(this.selections.length < this.maxSelections && $(this.main).hasClass("full")) $(this.main).removeClass("full").focus();
 	this.updating = false;
 }
 
