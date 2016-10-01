@@ -125,25 +125,30 @@
 			data.push(new multiSelectJs.Data("cat cat", "cat cat"));
 			data.push(new multiSelectJs.Data("dog", "dog"));
 			data.push(new multiSelectJs.Data("dogs", "dogs"));
-			data.push(new multiSelectJs.Data("dog dog", "dog dog"));
-			
-			var bigData = [];
-			
+			data.push(new multiSelectJs.Data("dog dog", "dog dog"));			
 			
 			var initiated = false;
+			
+			var enabled = true;
 			
 			function init() {
 				var options = [];
 				//0 - with linked input
 				options.push(null);
 
-				options.push({duplicateInput:	"in1", data: data,
-								id: "testId"});
-				options.push({duplicateInput:	"in2", data: data,
+				options.push({	duplicateInput: "in1",
+								data: data,
+								id: "testId",
+								disabled: !enabled});
+				options.push({	duplicateInput:	"in2",
+								data: data,
 								selections: [new multiSelectJs.Data("cat", "cat"),
 											new multiSelectJs.Data("dog", "dog"),
-											new multiSelectJs.Data("dogs", "dogs")]});
-				options.push({duplicateInput:	"in3", searchMethod: fakeServerRequest});
+											new multiSelectJs.Data("dogs", "dogs")],
+								disabled: !enabled});
+				options.push({	duplicateInput:	"in3",
+								searchMethod: fakeServerRequest,
+								disabled: !enabled});
 				
 				for(var i = lowest; i < msCount; i++) {
 					msArray.push(new multiSelectJs("ms" + i, options[i]));
@@ -163,6 +168,27 @@
 				msArray = [];
 					
 			}
+			
+			function toggleEnabled(el) {
+				enabled = !enabled;
+				if(!enabled) {
+					el.innerHTML = "Enable selects";
+					if(initiated) {
+						for(var i = lowest; i < msCount; i++) {
+							msArray[i].disable();
+						}
+					}
+				} else {
+					el.innerHTML = "Disable selects";
+					if(initiated) {
+						for(var i = lowest; i < msCount; i++) {
+							msArray[i].enable();
+						}
+					}
+				}
+			}
+			
+			
 			
 			function fakeServerRequest(searchTerms, selection, multiSelectInstance) {
 				window.setTimeout(function() {

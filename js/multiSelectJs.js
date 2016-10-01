@@ -17,79 +17,6 @@
  *	Polyfills:		The following polyfills are included with this file:
  *						- Array.isArray(x) : Boolean
  *
- *	Options:
- *					duplicateInput
- *						- A text or hidden input field to store the selected values in.  This is useful for
- *						integration with other frameworks, such as SalesForce.  This can be either a
- *						text ID or a reference to an actual text or hidden element.
- *					id
- *						- The HTML ID to apply to the new multiSelectJs main div element
- *					data
- *						- Any preloaded data to insert into the multiSelectJs
- *					scrollParent
- *						- The scroll parent for this multiSelectJs.  This is useful for selects placed
- *						on a modal or dialog that doesn't scroll with the body.  This parameter
- *						accepts an element ID or a reference to an element.
- *					placeholder
- *						- The placeholder text that appears when there is no text entered into the
- *						multiSelectJs.
- *					noResultsMessage
- *						- The text which should appear when a search string returns no results
- *					maxSelections
- *						- The maximum number of options the user may select
- *					maxResults
- *						- The maximum number of results that may appear after a search
- *					delimiter
- *						- The delimiter to use when return data as a string
- *					selections
- *						- Parseable data containing preselected data for the multiSelectJs instance
- *					searchMethod
- *						- A custom search method that may allow for server side request integration.
- *						This should point to a JavaScript method that can take up to two parameters.
- *						This function should have the following format:
- *
- *						function myCustomFunction(searchTerms, currentSelections, thisInstance) {
- *							//Let's assume the following function contacts the server and
- *							//calls its second argument as a callback upon completion
- *							makeServerRequest(searchTerms, currentSelections, function(result) {
- *								//Test that request was successful
- *								//Next format data in a manner that can be accepted by multiSelectJs
- *								//Finally, call the multiSelectJs callback function
- *								thisInstance.searchCallback(result.dataArray);
- *							}
- *						}
- *					submitEvent
- *						- The event to fire when the multiSelectJs is subitted (i.e. to trigger form submission)
- *
- *	Attributes (on the initial element):
- *					data-value
- *						- The multiSelectJs' initial value  NOT IMPLEMENTED
- *
- *	Functions:
- *					getValue() : String
- *						- Returns a string containing the current value of the multiSelect.  Each
- *						entry in the result will be separated by the character specified in the
- *						delimiter option (semi-colon by default).  This will return null if the
- *						multiSelectJs has not been initialized.
- *					getSelections() : Array
- *						- Returns an array of the multiSelect's currently selected values.  The data
- *						will be an array of objects in the following format: 
- *							[{n: "label", v: "value"}, ...]
- *						This function will return null if the multiSelectJs has not been initialized.
- *					setSelections(Array selections)
- *						Sets the current selections to the value specified in the function's argument.
- *						This should be an array of objects as follows:
- *							[{n: "label", v: "value"}, ...]
- *					addSelections(Array selections)
- *						Appends the current selections with the value specified in the function's
- *						argument.  This should be an array of objects as follows:
- *							[{n: "label", v: "value"}, ...]
- *					removeSelections(Array selections)
- *						Removes the specified selections from the multiSelect's currently selected
- *						data.  The argument should be an array of objects as follows:
- *							[{n: "label", v: "value"}, ...]
- *					reset()
- *						Clears the currently selected data from the multiSelectJs
  *
  */
 function multiSelectJs(el, options) {
@@ -100,6 +27,7 @@ function multiSelectJs(el, options) {
 	//State variables
 	this.updating = false;
 	this.focusing = false;
+	this.disabled = true;
 	
 	//State variables
 	this.hasRequest = false;//Is there a current server request being fired	
@@ -140,7 +68,6 @@ function multiSelectJs(el, options) {
 	this.noResultsMessage = "No results found";
 	this.placeholderText = "Select an option";
 	
-	
 	//The search funciton.  This specifies where the multiSelect values come from when the user
 	//performs a search.  If left unset, the values will be sourced from the dataSet variable.
 	//This function should accept one search string and optionally an instance of "this".  This 
@@ -162,6 +89,9 @@ function multiSelectJs(el, options) {
 	//Other
 	this.forbiddenCharacters = /[^a-zA-Z0-9 \+\=\-\*\$\%\.\,\!\@\#\&\(\)\;\"\'\?]/;
 
+	//SalesForce Specific
+	this.salesForceRemotingMethod = null;
+	
 	if(!!el) this.init(el, options);
 }
 
@@ -244,6 +174,14 @@ multiSelectJs.prototype.parseOptions = function(options) {
 	}
 	if(!this.scrollParent) this.scrollParent = document.body;
 	
+	//Enabled state
+	t = typeof options.disabled;
+	if(t === "boolean") this.disabled = options.disabled;
+	else if(t === "string") {
+		if(t.trim().toLowerCase() === "false") this.disabled = true;
+		else this.disabled = false;
+	} else this.disabled = false;
+	
 	//Placeholders
 	if(typeof options.placeholder === "string") this.placeholderText = options.placeholder;
 	if(typeof options.noResultsMessage === "string") this.noResultsMessage = options.noResultsMessage;
@@ -268,7 +206,15 @@ multiSelectJs.prototype.parseOptions = function(options) {
 	if(!!options.submitEvent) {
 		if(typeof options.submitEvent === "function") this.submitEvent = options.submitEvent;
 		else throw new TypeError("An invalid submitEvent function has been provided to multiSelectJs");
-	} 
+	}
+	
+	//SalesForce specific
+	if(!!options.salesForceRemotingMethod) {
+		if(typeof options.salesForceRemotingMethod === "function") {
+			this.salesForceRemotingMethod = options.salesForceRemotingMethod;
+			if(!!options.submitEvent) this.submitEvent = multiSelectJs.salesForceSearch;
+		} else throw new TypeError("An invalid SalesForce search function has been provided to multiSelectJs");
+	}
 }
 
 multiSelectJs.prototype.buildGui = function(el) {
@@ -277,7 +223,9 @@ multiSelectJs.prototype.buildGui = function(el) {
 	//Build the main div
 	var main = doc.createElement("div");
 	if(this.mainId) main.id = this.mainId;
-	main.className = "multiSelectJs";
+	if(this.disabled) main.className = "multiSelectJs disabled";
+	else main.className = "multiSelectJs";
+
 	main.tabIndex = 0;
 	main.innerHTML = "<div class=\"multiSelectJs-loader\"></div>";
 	
@@ -425,7 +373,7 @@ multiSelectJs.prototype.mainDoubleClick = function(ev) {
 }
 
 multiSelectJs.prototype.focusInput = function(ev, noDelay, selectAll) {
-	if(!this.initialized || this.focusing) return;
+	if(!this.initialized || this.focusing || this.disabled) return;
 	this.focusing = true;
 	//ev.preventDefault();
 	ev.stopPropagation();
@@ -487,11 +435,11 @@ multiSelectJs.prototype.hidePlaceholder = function() {
 }
 
 multiSelectJs.prototype.inputChanged = function(ev) {
-	if(!this.initialized || this.updating || this.selections.length >= this.maxSelections) return;
+	if(!this.initialized || this.updating || this.disabled || this.selections.length >= this.maxSelections) return;
 	var key = ev.keyCode;
-	//If ctrl is held, or key pressed is enter (13), ctrl (17), shift(16), escape (27), left (37), up (38),
-	//right (39), or down (40)
-	if(ev.ctrlKey || key === 13 || key === 16 || key === 17 || key === 27 || key === 37 || key === 38 || key === 39 || key === 40) return;
+	//If ctrl is held, or the key pressed is tab (9), enter (13), ctrl (17), shift(16), escape (27),
+	//left (37), up (38), right (39), or down (40)
+	if(ev.ctrlKey || key === 9 || key === 13 || key === 16 || key === 17 || key === 27 || key === 37 || key === 38 || key === 39 || key === 40) return;
 	this.updateInputValue();
 }
 
@@ -560,7 +508,7 @@ multiSelectJs.prototype.isInputEmpty = function() {
 
 multiSelectJs.prototype.inputKeyDown = function(ev) {
 	ev.stopPropagation();
-	if(!this.initialized || this.updating) return;
+	if(!this.initialized || this.updating || this.disabled) return;
 	var key = ev.keyCode;
 	//The enter key
 	if(key === 13) {
@@ -601,6 +549,8 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 			}
 		}
 	}
+	//Tab
+	else if(key === 9) this.hideDropdown();
 	//Down arrow
 	else if(key === 40) {
 		//Stop the page from scrolling
@@ -706,7 +656,7 @@ multiSelectJs.prototype.optionClick = function(ev) {
  *	Selects an option from the dropdown box.  Accepts a reference to the select option element.
  */
 multiSelectJs.prototype.selectOption = function(optionReference) {
-	if(!this.initialized) return;
+	if(!this.initialized || this.disabled) return;
 	if(this.selections.length < this.maxSelections) {
 		var value = optionReference.value;
 		this.selections.push(value);
@@ -764,7 +714,7 @@ multiSelectJs.prototype.selectOption = function(optionReference) {
  *	the hovered option
  */
 multiSelectJs.prototype.optionEnter = function(ev) {
-	if(!this.initialized) return;
+	if(!this.initialized || this.disabled) return;
 	var old = this.hoveredData;
 	var t = ev.target;
 	var v = t.value;
@@ -819,7 +769,7 @@ multiSelectJs.prototype.incrementHoverIndex = function(offset) {
 }
 
 multiSelectJs.prototype.optionExit = function(ev) {
-	if(!this.initialized) return;
+	if(!this.initialized || this.disabled) return;
 	this.hoveredData = null;
 	this.hoveredReference = null;
 	$(ev.target).removeClass("hovered");
@@ -829,7 +779,7 @@ multiSelectJs.prototype.optionExit = function(ev) {
  *	The selected item click event - used to remove selected options
  */
 multiSelectJs.prototype.removeSelection = function(ev) {
-	if(!this.initialized) return;
+	if(!this.initialized || this.disabled) return;
 	var v = ev.target.parentElement.value, i = 0, j = this.selections.length;
 	for(; i < j; i++) {
 		if(multiSelectJs.isDataEqual(v, this.selections[i])) {
@@ -1088,7 +1038,7 @@ multiSelectJs.prototype.hideDropdown = function(immediate) {
 }
 
 multiSelectJs.prototype.showDropdown = function() {
-	if(this.dropdownVisible === true || !this.initialized) return;
+	if(this.dropdownVisible === true || !this.initialized || this.disabled) return;
 	this.prepareToPositionDropdown();
 	this.hoveredData = null;
 	this.hoveredReference = null;
@@ -1213,7 +1163,16 @@ multiSelectJs.prototype.focus = function() {
 	this.focusInput();
 }
 
+multiSelectJs.prototype.enable = function() {
+	this.disabled = false;
+	$(this.main).removeClass("disabled");
+}
 
+multiSelectJs.prototype.disable = function() {
+	this.hideDropdown();
+	this.disabled = true;
+	$(this.main).addClass("disabled");
+}
 
 /*
  *	Static functions
@@ -1260,3 +1219,11 @@ multiSelectJs.parseData = function(data) {
 	//HANDLE DIFFERENT DATA INPUTS
 	return out;
 }
+
+//Calls a SalesForce remote method 
+multiSelectJs.salesForceSearch = function(searchTerms, excludedResults, multiSelectInstance) {
+	if (typeof multiSelectInstance.salesForceRemotingMethod != "function") throw new Error("No function provided to multi select");
+	multiSelectInstance.salesForceRemotingMethod(searchTerms, excludedResults, function(ret, res) {
+		multiSelectInstance.searchCallback(ret);
+	});
+};

@@ -109,6 +109,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 		-webkit-border-radius: $selectionRadius;
 		-moz-border-radius: $selectionRadius;
 		border-radius: $selectionRadius;
+		cursor: default;
 		@include noSelect();
 		.selectionText {
 			padding: 3px;
@@ -156,16 +157,15 @@ $disableBackground:	darken($backgroundColour, 5%);
 	}
 	&:not(.full) {
 		@include noSelect();
+		cursor: text;
 		outline: none !important;
 	}
 	&.full {
+		background-color: $disableBackground;
+		cursor: default;
 		.multiSelectJs-input,
 		.multiSelectJs-placeholderText {
 			display: none !important;
-		}
-		background-color: $disableBackground;
-		.multiSelectJs-input {
-			opacity: 0;
 		}
 	}
 	
@@ -190,6 +190,15 @@ $disableBackground:	darken($backgroundColour, 5%);
 			@include doAnimation(multiSelectJs-animation 1s linear infinite);
 		}
 	}
+	&.disabled {
+		background-color: $disableBackground;
+		cursor: default;
+		.multiSelectJs-placeholderText,
+		.selection .multiSelectJs-close,
+		.multiSelectJs-input {
+			display: none !important;
+		}
+	}
 }
 
 .multiSelectJs-dropdown {
@@ -212,6 +221,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 	
 	.multiSelectJs-option {
 		padding: 8px 10px;
+		cursor: pointer;
 		@include noSelect();
 		&.hovered {
 			background-color: $dropdownHover;

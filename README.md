@@ -128,6 +128,30 @@ Some instructions: (not too many)
 					The event to fire when the multiSelectJs is submitted (i.e. when the multiSelectJs
 					dropdown is hidden and the enter key is struck).  If this option is not specified,
 					and the multiSelectJs is within a form, that form will be submitted as normal.
+				
+				disabled
+					Determines whether the multiSelectJs should initialize in a disabled state.
+					
+					Accepts either a boolean, or a string equal to true or false.  If this option is
+					not specified, this defaults to false.
+					
+				salesForceRemotingMethod
+					An alternative to the submitEvent.  This allows direct integration with SalesForce
+					remoting, accepting a remote action that outputs a class containing a List two Strings,
+					titled "value" and "label".  i.e.
+						
+						public class MultiSelectJsData {
+							public String value {get; set;}
+							public String label {get; set;}
+						}
+						
+						@RemoteAction
+						public static List<MultiSelectJsData> MyRemoteAction(searchTerms, currentSelections) {
+							return getTheOutputHere(searchTerms, currentSelections);
+						}
+					
+					Setting this value will also set the submitEvent option appropriately, unless this value
+					has already been set.					
 										
 			3.	You can use the following JavaScript functions on an initialized fancySelectJs object:
 				
