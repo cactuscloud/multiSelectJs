@@ -200,7 +200,7 @@ multiSelectJs.prototype.parseOptions = function(options) {
 	if(!!options.searchMethod) {
 		if(typeof options.searchMethod === "function") this.searchMethod = options.searchMethod;
 		else throw new TypeError("An invalid searchMethod function has been provided to multiSelectJs");
-	}
+	} else this.searchMethod = this.localSearch;
 	
 	//Submit event
 	if(!!options.submitEvent) {
@@ -212,7 +212,7 @@ multiSelectJs.prototype.parseOptions = function(options) {
 	if(!!options.salesForceRemotingMethod) {
 		if(typeof options.salesForceRemotingMethod === "function") {
 			this.salesForceRemotingMethod = options.salesForceRemotingMethod;
-			if(!!options.submitEvent) this.submitEvent = multiSelectJs.salesForceSearch;
+			if(!options.searchMethod) this.searchMethod = multiSelectJs.salesForceSearch;
 		} else throw new TypeError("An invalid SalesForce search function has been provided to multiSelectJs");
 	}
 }
@@ -238,6 +238,7 @@ multiSelectJs.prototype.buildGui = function(el) {
 	//Create the input
 	var input = doc.createElement("span");
 	input.setAttribute("contenteditable", "true");
+	input.tabIndex = 0;
 	input.className = "multiSelectJs-input";
 	input.setAttribute("spellcheck", "false");
 	main.appendChild(input);
@@ -375,38 +376,45 @@ multiSelectJs.prototype.mainDoubleClick = function(ev) {
 multiSelectJs.prototype.focusInput = function(ev, noDelay, selectAll) {
 	if(!this.initialized || this.focusing || this.disabled) return;
 	this.focusing = true;
-	//ev.preventDefault();
+	ev.preventDefault();
 	ev.stopPropagation();
 	if(this.selections.length < this.maxSelections) {
-		var input = this.input;
-		input.style.display = "inline";
-		$(this.placeholder).addClass("inputVisible");
-		//Another fix for ie
-		var firstChild = input.firstChild;
-		var isEmpty = this.isInputEmpty();
-		if(isEmpty && !this.hasRequest) this.showPlaceholder();
-		else {
-			var l = this.searchTerms.length;
-			this.showDropdown();
-			//Set cursor to end position - if click occurred to the right of the text
-			if(!isEmpty && (ev.clientX > $(input).offset().left + $(input).width() || selectAll === true)) {
-				var selection = window.getSelection();
-				range = document.createRange();
-				range.setStart(firstChild, (selectAll === true ? 0 : l));
-				range.setEnd(firstChild, l);
-				selection.removeAllRanges();
-				selection.addRange(range);
-			}
-		}
 		//Avoid re-entrancy issues
-		if(noDelay === true) $(this.input).focus();
-		else {
+		if(noDelay === true) {
+			$(this.input).css("display", "inline").focus();
+			$(this.placeholder).addClass("inputVisible");
+			this.finishInputFocus();
+		} else {
 			window.setTimeout(function() {
-				$(this.input).focus();
+				$(this.placeholder).addClass("inputVisible");
+				$(this.input).css("display", "inline");
+				this.finishInputFocus();
 			}.bind(this), 0);
 		}
 	}
 	this.focusing = false;
+}
+
+multiSelectJs.prototype.finishInputFocus = function() {
+	//Another fix for ie
+	var firstChild = this.input.firstChild;
+	var isEmpty = this.isInputEmpty();
+	if(isEmpty && !this.hasRequest) this.showPlaceholder();
+	else {
+		var l = this.searchTerms.length;
+		this.showDropdown();
+		//Set cursor to end position - if click occurred to the right of the text
+		if(!isEmpty && (ev.clientX > $(input).offset().left + $(input).width() || selectAll === true)) {
+			var selection = window.getSelection();
+			range = document.createRange();
+			range.setStart(firstChild, (selectAll === true ? 0 : l));
+			range.setEnd(firstChild, l);
+
+
+
+			selection.addRange(range);
+		}
+	}
 }
 
 multiSelectJs.prototype.dropdownClick = function(ev) {
@@ -415,6 +423,8 @@ multiSelectJs.prototype.dropdownClick = function(ev) {
 
 multiSelectJs.prototype.blurInput = function() {
 	if(!this.initialized) return;
+	console.log('blur');
+
 	var firstChildNull = (this.input.firstChild === null);//ie fix
 	var noTerms = (this.searchTerms === "");
 	if(noTerms || firstChildNull || this.selections.length >= this.maxSelections) {
