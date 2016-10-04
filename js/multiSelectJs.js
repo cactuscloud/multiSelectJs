@@ -409,9 +409,6 @@ multiSelectJs.prototype.finishInputFocus = function() {
 			range = document.createRange();
 			range.setStart(firstChild, (selectAll === true ? 0 : l));
 			range.setEnd(firstChild, l);
-
-
-
 			selection.addRange(range);
 		}
 	}
@@ -423,8 +420,6 @@ multiSelectJs.prototype.dropdownClick = function(ev) {
 
 multiSelectJs.prototype.blurInput = function() {
 	if(!this.initialized) return;
-	console.log('blur');
-
 	var firstChildNull = (this.input.firstChild === null);//ie fix
 	var noTerms = (this.searchTerms === "");
 	if(noTerms || firstChildNull || this.selections.length >= this.maxSelections) {
