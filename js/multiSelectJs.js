@@ -383,19 +383,19 @@ multiSelectJs.prototype.focusInput = function(ev, noDelay, selectAll) {
 		if(noDelay === true) {
 			$(this.input).css("display", "inline").focus();
 			$(this.placeholder).addClass("inputVisible");
-			this.finishInputFocus();
+			this.finishInputFocus(ev, selectAll);
 		} else {
 			window.setTimeout(function() {
 				$(this.placeholder).addClass("inputVisible");
 				$(this.input).css("display", "inline");
-				this.finishInputFocus();
+				this.finishInputFocus(ev, selectAll);
 			}.bind(this), 0);
 		}
 	}
 	this.focusing = false;
 }
 
-multiSelectJs.prototype.finishInputFocus = function() {
+multiSelectJs.prototype.finishInputFocus = function(ev, selectAll) {
 	//Another fix for ie
 	var firstChild = this.input.firstChild;
 	var isEmpty = this.isInputEmpty();
