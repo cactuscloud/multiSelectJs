@@ -145,7 +145,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 	.multiSelectJs-input {
 		//width: 10px;
 		min-width: 3px;
-		margin: 6px;
+		margin-left: 6px;
 		color: $textColour;
 		outline: none !important;//For browser defined focus outlines
 		//Fix for safari
@@ -157,10 +157,6 @@ $disableBackground:	darken($backgroundColour, 5%);
 		user-select: text !important;
 		&.empty {
 			display: inline-block;//Safari fix
-			margin-right: 0;
-			width: auto;
-			height: 11px;//Safari fix
-			vertical-align: top;//Safari fix
 		}
 	}
 	@include noSelect();
