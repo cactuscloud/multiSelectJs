@@ -79,6 +79,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 	background-color: $backgroundColour;
 	color: $textColour;
 	text-align: left;
+	overflow: hidden;
 	.selections {
 		display: inline;
 		@include noSelect();
@@ -93,12 +94,16 @@ $disableBackground:	darken($backgroundColour, 5%);
 	}
 	//The placeholder text
 	.multiSelectJs-placeholderText {
-		padding-left: 6px;
+		white-space: nowrap;
+		max-width: 100%;
+		text-overflow: ellipsis;
+		overflow: hidden;
 		color: $placeholderColour;
-		&.inputVisible {
-			padding-left: 0;
-		}
+		vertical-align: middle;
+		pointer-events: none;
+		display: none\9 !important;//IE fix
 	}
+	
 	.selection {
 		position: relative;
 		display: inline-block;
@@ -138,8 +143,8 @@ $disableBackground:	darken($backgroundColour, 5%);
 	}
 
 	.multiSelectJs-input {
-		display: none;
-		width: 10px;
+		//width: 10px;
+		min-width: 3px;
 		margin: 6px;
 		color: $textColour;
 		outline: none !important;//For browser defined focus outlines
@@ -150,23 +155,19 @@ $disableBackground:	darken($backgroundColour, 5%);
 		-moz-user-select: text !important;
 		-ms-user-select: text !important;  
 		user-select: text !important;
-		&.placeholderVisible {
+		&.empty {
+			display: inline-block;//Safari fix
 			margin-right: 0;
-			width: 0;
-		}		
+			width: auto;
+			height: 11px;//Safari fix
+			vertical-align: top;//Safari fix
+		}
 	}
-	&:not(.full) {
-		@include noSelect();
-		cursor: text;
-		outline: none !important;
-	}
+	@include noSelect();
+	cursor: text;
+	outline: none !important;
 	&.full {
 		background-color: $disableBackground;
-		cursor: default;
-		.multiSelectJs-input,
-		.multiSelectJs-placeholderText {
-			display: none !important;
-		}
 	}
 	
 	.multiSelectJs-loader {

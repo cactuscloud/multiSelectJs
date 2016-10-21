@@ -19,6 +19,7 @@
  *
  *
  */
+ 
 function multiSelectJs(el, options) {
 	//Initialization variables
 	this.initialized = false;
@@ -28,6 +29,7 @@ function multiSelectJs(el, options) {
 	this.updating = false;
 	this.focusing = false;
 	this.disabled = true;
+	this.silentSearch = false;//Should the dropdown NOT be shown after the search is complete
 	
 	//State variables
 	this.hasRequest = false;//Is there a current server request being fired	
@@ -128,12 +130,17 @@ multiSelectJs.prototype.init = function(el, options) {
 	if(typeof el == "undefined" || !el) throw new TypeError('multiSelectJs requires a valid HTML element to initialize.');
 	//Check whether a multiSelectJs already exists for this element
 	if(!!el.multiSelectJs) throw new Error("A multiSelectJs already exists for this element");
-	
+
 	this.template = el;
-	
+
 	this.buildGui(el);
-		
+
 	this.updateSelectedData();
+	
+	if(this.selections.length >= this.maxSelections) {
+		$(this.main).addClass("full");
+		this.hidePlaceholder();
+	}
 	
 	this.setEventListeners();
 	
@@ -226,7 +233,7 @@ multiSelectJs.prototype.buildGui = function(el) {
 	if(this.disabled) main.className = "multiSelectJs disabled";
 	else main.className = "multiSelectJs";
 
-	main.tabIndex = 0;
+	//main.tabIndex = 0;
 	main.innerHTML = "<div class=\"multiSelectJs-loader\"></div>";
 	
 	//Build selected item area
@@ -239,7 +246,7 @@ multiSelectJs.prototype.buildGui = function(el) {
 	var input = doc.createElement("span");
 	input.setAttribute("contenteditable", "true");
 	input.tabIndex = 0;
-	input.className = "multiSelectJs-input";
+	input.className = "multiSelectJs-input empty";
 	input.setAttribute("spellcheck", "false");
 	main.appendChild(input);
 	
@@ -279,13 +286,15 @@ multiSelectJs.prototype.setEventListeners = function() {
 	
 	$(this.main).on("click." + this.uId, this.mainClick.bind(this));
 	$(this.main).on("dblclick." + this.uId, this.mainDoubleClick.bind(this));
-	$(this.main).on("focus." + this.uId, this.focusInput.bind(this));
-	$(this.main).on("keydown." + this.uId, this.inputKeyDown.bind(this));
 	
+	$(this.main).on("keydown." + this.uId, this.inputKeyDown.bind(this));
+		
 	//Split due to ie - great!
+	
 	$(this.input).on("keyup." + this.uId, this.inputChanged.bind(this));
 	
 	$(this.input).on("keydown." + this.uId, this.inputKeyDown.bind(this));
+	$(this.input).on("focus." + this.uId, this.focusInput.bind(this));
 	$(this.input).on("blur." + this.uId, this.blurInput.bind(this));
 	
 	$(this.dropdown).on("click." + this.uId, this.dropdownClick.bind(this));
@@ -366,7 +375,10 @@ multiSelectJs.prototype.destroy = function() {
 }
 
 multiSelectJs.prototype.mainClick = function(ev) {
-	this.focusInput(ev, true);
+	ev.stopPropagation();
+	ev.preventDefault();
+	this.hidePlaceholder();
+	this.input.focus();
 }
 
 multiSelectJs.prototype.mainDoubleClick = function(ev) {
@@ -374,68 +386,72 @@ multiSelectJs.prototype.mainDoubleClick = function(ev) {
 }
 
 multiSelectJs.prototype.focusInput = function(ev, noDelay, selectAll) {
+	if(!!ev) {
+		ev.preventDefault();
+		ev.stopPropagation();
+	}
 	if(!this.initialized || this.focusing || this.disabled) return;
+	this.hidePlaceholder();
 	this.focusing = true;
-	ev.preventDefault();
-	ev.stopPropagation();
+	
 	if(this.selections.length < this.maxSelections) {
 		//Avoid re-entrancy issues
 		if(noDelay === true) {
-			$(this.input).css("display", "inline").focus();
-			$(this.placeholder).addClass("inputVisible");
+			this.input.focus();
 			this.finishInputFocus(ev, selectAll);
 		} else {
 			window.setTimeout(function() {
-				$(this.placeholder).addClass("inputVisible");
-				$(this.input).css("display", "inline");
 				this.finishInputFocus(ev, selectAll);
 			}.bind(this), 0);
 		}
 	}
-	this.focusing = false;
 }
 
 multiSelectJs.prototype.finishInputFocus = function(ev, selectAll) {
 	//Another fix for ie
 	var firstChild = this.input.firstChild;
 	var isEmpty = this.isInputEmpty();
-	if(isEmpty && !this.hasRequest) this.showPlaceholder();
-	else {
-		var l = this.searchTerms.length;
+	
+	if(!!firstChild) {
+		var l = (this.searchTerms === null ? 0 : this.searchTerms.length);
+		if(l === 0) firstChild = this.input.lastChild;
 		this.showDropdown();
 		//Set cursor to end position - if click occurred to the right of the text
-		if(!isEmpty && (ev.clientX > $(input).offset().left + $(input).width() || selectAll === true)) {
+		if(!isEmpty && (ev.clientX > $(this.input).offset().left + $(this.input).width() || selectAll === true)) {
 			var selection = window.getSelection();
-			range = document.createRange();
+			var range = document.createRange();
 			range.setStart(firstChild, (selectAll === true ? 0 : l));
 			range.setEnd(firstChild, l);
 			selection.addRange(range);
 		}
+	} else {
+		
 	}
+	this.focusing = false;
 }
 
 multiSelectJs.prototype.dropdownClick = function(ev) {
 	ev.stopPropagation();
 }
 
-multiSelectJs.prototype.blurInput = function() {
+multiSelectJs.prototype.blurInput = function(ev) {
 	if(!this.initialized) return;
+	if(this.focusing) {
+		ev.preventDefault();
+		return;
+	}
 	var firstChildNull = (this.input.firstChild === null);//ie fix
 	var noTerms = (this.searchTerms === "");
-	if(noTerms || firstChildNull || this.selections.length >= this.maxSelections) {
-		this.input.style.display = "none";
-		$(this.placeholder).removeClass("inputVisible");
-		if(noTerms || firstChildNull) this.placeholder.style.display = "inline";
+	if((noTerms || firstChildNull) && this.selections.length < this.maxSelections) {
+		if(noTerms || firstChildNull) this.showPlaceholder();
 	}
 }
 
 multiSelectJs.prototype.showPlaceholder = function() {
-	$(this.input).addClass("placeholderVisible");
 	this.placeholder.style.display = "inline";
 }
 
 multiSelectJs.prototype.hidePlaceholder = function() {
-	$(this.input).removeClass("placeholderVisible");
 	this.placeholder.style.display = "none";
 }
 
@@ -445,6 +461,7 @@ multiSelectJs.prototype.inputChanged = function(ev) {
 	//If ctrl is held, or the key pressed is tab (9), enter (13), ctrl (17), shift(16), escape (27),
 	//left (37), up (38), right (39), or down (40)
 	if(ev.ctrlKey || key === 9 || key === 13 || key === 16 || key === 17 || key === 27 || key === 37 || key === 38 || key === 39 || key === 40) return;
+	if((this.searchString === null || this.searchString === "") && key === 8) return;
 	this.updateInputValue();
 }
 
@@ -471,10 +488,10 @@ multiSelectJs.prototype.updateInputValue = function() {
 	if(isEmpty) {
 		this.searchTerms = "";
 		this.hideDropdown();
-		this.showPlaceholder();
 		this.updating = false;
+		$(this.input).addClass("empty");
 		return;
-	}
+	} else $(this.input).removeClass("empty");
 	
 	//Set the new caret position
 	var l = newValue.length;
@@ -499,7 +516,6 @@ multiSelectJs.prototype.updateInputValue = function() {
 	
 	this.searchTerms = newValue;
 
-	this.hidePlaceholder();
 	//Make sure a close dialog can be reopened with the same search terms
 	if(this.searchTerms === this.lastSearch && !this.hasRequest) this.showDropdown();
 	else this.performSearch();
@@ -548,10 +564,9 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 			this.hideDropdown();
 			this.lastSearch = null;
 			//If the input is empty, delete the latest selection
-			if(this.selections.length !== 0) {
-				this.selections.pop();
-				this.updateSelectedData();
-			}
+			if(this.selections.length !== 0) this.selections.pop();
+			this.updateSelectedData();
+			$(this.input).focus();
 		}
 	}
 	//Tab
@@ -561,17 +576,19 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 		//Stop the page from scrolling
 		ev.preventDefault();
 		if(this.dropdownVisible) this.incrementHoverIndex(1);
-		else if(this.searchTerms !== null && this.searchTerms.length > 0 && this.selections.length < this.maxSelections) this.showDropdown();
+		else if(!this.hasRequest && this.searchTerms !== null && this.searchTerms.length > 0 && this.selections.length < this.maxSelections) this.showDropdown();
 	}
 	//Up arrow
 	else if(key === 38) {
 		//Stop the page from scrolling
 		ev.preventDefault();
 		if(this.dropdownVisible) this.incrementHoverIndex(-1);
-		else if(this.searchTerms !== null && this.searchTerms.length > 0 && this.selections.length < this.maxSelections) this.showDropdown();
+		else if(!this.hasRequest && this.searchTerms !== null && this.searchTerms.length > 0 && this.selections.length < this.maxSelections) this.showDropdown();
 	}
 	//Escape
 	else if(key == 27) this.hideDropdown();
+	//Cannot select any more
+	else if(this.selections.length >= this.maxSelections) ev.preventDefault();
 }
 
 /**
@@ -702,15 +719,18 @@ multiSelectJs.prototype.selectOption = function(optionReference) {
 			}
 		}
 		//Hide dropdown if the maximum number of selections has been reached
-		if(this.selections.length >= this.maxSelections) {
-			this.hideDropdown();
-			$(this.input).text("");
-			this.searchTerms = "";
-			this.lastSearch = null;
-			$(this.main).addClass("full").focus();
-		}
+		if(this.selections.length >= this.maxSelections) $(this.main).addClass("full");
+		else this.showPlaceholder();
+		
+		//Empty the search box
+		$(this.input).text("").addClass("empty").focus();
+		this.searchTerms = "";
+		this.lastSearch = null;
+		
 		//Set no results message
 		if(j === 0) this.showNoResultsMessage();
+		//Hide the dropdown
+		this.hideDropdown();
 	}
 }
 
@@ -794,11 +814,15 @@ multiSelectJs.prototype.removeSelection = function(ev) {
 		}
 	}
 	this.updateSelectedData();
-	this.hideDropdown();
+	//Update results for future reference
 	if(this.searchTerms != "") {
 		this.lastSearch = null;
-		this.performSearch();
+		this.performSearch(true);
 	}
+	this.hideDropdown();
+	
+	//Stop the focus event from propagating through and re-showing the dropdown
+	ev.stopPropagation();
 }
 
 /**
@@ -812,17 +836,20 @@ multiSelectJs.prototype.removeSelection = function(ev) {
  *
  *	The function defined in this.searchMethod should then fire multiSelectJs.searchCallback(Array data)
  *	upon completion.
+ *
+ *	If set to silent, the dropdown will not be shown afterwards
  */
-multiSelectJs.prototype.performSearch = function() {
+multiSelectJs.prototype.performSearch = function(silent) {
 	//Ensure only one request fires at a time and that the search terms exist and have changed
-	if(!this.initialized || this.hasRequest || typeof this.searchTerms !== "string" || this.searchTerms.trim() === "" || this.searchTerms === this.lastSearch) return;
+	if(!this.initialized || typeof this.searchTerms !== "string" || this.searchTerms.trim() === "" || this.searchTerms === this.lastSearch) return;
+	if(this.hasRequest) {
+		this.silentSearch = silent;
+		return;
+	}
 	try {
 		this.hasRequest = true;
 		this.lastSearch = this.searchTerms;
-		if(this.searchMethod !== this.localSearch) {
-			$(this.main).addClass("loading");
-			this.hideDropdown();
-		}
+		if(this.searchMethod !== this.localSearch) $(this.main).addClass("loading");
 		this.searchMethod(this.searchTerms, this.selections, this);
 	} catch(ex) {
 		$(this.main).removeClass("loading");
@@ -946,14 +973,30 @@ multiSelectJs.prototype.searchCallback = function(data) {
 		return;
 	} else {
 		//Get data
-		this.results = multiSelectJs.parseData(data);
+		var results = multiSelectJs.parseData(data);
+		//Remove duplicate values
+		var i = 0, j = this.selections.length, x, y = results.length;;
+		for(; i < j; i++) {
+			for(x = 0; x < y; x++) {
+				if(this.selections[i].value === results[x].value) {
+					results.splice(x, 1);
+					x--;
+					y--;
+				}
+			}
+		}
+		this.results = results;
+		
 		//Populate dropdown
 		this.populateDropdown();
 		$(this.main).removeClass("loading");
-		this.showDropdown();
+		if(!this.silentSearch) this.showDropdown();
 	}
 	this.hasRequest = false;
 }
+
+
+
 
 /**
  *	Checks and updates the dropdown position if it is visible.  This is used on window resize and 
@@ -1033,7 +1076,7 @@ multiSelectJs.prototype.scrollOptionIntoView = function(index) {
 
 multiSelectJs.prototype.hideDropdown = function(immediate) {
 	if(!this.dropdownVisible || !this.initialized) return;
-	if(immediate === true) $(this.dropdown).hide();
+	if(immediate === true) $(this.dropdown).stop().hide();
 	else $(this.dropdown).stop().fadeOut();
 	this.hoveredData = null;
 	this.hoveredReference = null;
@@ -1049,7 +1092,6 @@ multiSelectJs.prototype.showDropdown = function() {
 	this.hoveredReference = null;
 	this.dropdownVisible = true;
 	$(this.dropdown).stop().fadeIn();
-	
 }
 
 multiSelectJs.prototype.populateDropdown = function() {

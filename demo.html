@@ -93,6 +93,20 @@
 				<div id="ms3" class="multiSelectJs-placeholder"></div>
 			</div>		
 			
+			<div>
+				<h3>
+					multiSelectJs set to single select initializing with one selection on load
+				</h3>
+				<label for="in4">
+					Linked input:
+				</label>
+				<input type="text" id="in4"/>
+				<label id="l4" for="s4">
+					Value = ""
+				</label>
+				<div id="ms4" class="multiSelectJs-placeholder"></div>
+			</div>		
+			
 			<div class="buttonArea">
 				Initialize multiSelectJs:
 				<div>
@@ -116,7 +130,7 @@
 		
 		<script>
 			var lowest = 0;
-			var msCount = 4;
+			var msCount = 5;
 			var msArray = [];
 			
 			var data = [];
@@ -148,6 +162,11 @@
 								disabled: !enabled});
 				options.push({	duplicateInput:	"in3",
 								searchMethod: fakeServerRequest,
+								disabled: !enabled});
+				options.push({	duplicateInput:	"in4",
+								maxSelections: 1,
+								data: data,
+								selections: [new multiSelectJs.Data("cat", "cat")],
 								disabled: !enabled});
 				
 				for(var i = lowest; i < msCount; i++) {
@@ -200,7 +219,7 @@
 					}
 					//Now we have our result - return the data to the multiSelect
 					multiSelectInstance.searchCallback(out);
-				}, 1500);
+				}, 2500);
 			}
 		
 		</script>
