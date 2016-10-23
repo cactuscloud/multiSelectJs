@@ -89,7 +89,7 @@ function multiSelectJs(el, options) {
 	this.submitEvent = null;
 	
 	//Other
-	this.forbiddenCharacters = /[^a-zA-Z0-9 \+\=\-\*\$\%\.\,\!\@\#\&\(\)\;\"\'\?]/;
+	this.forbiddenCharacters = /[^a-zA-Z0-9\s\+\=\-\*\$\%\.\,\!\@\#\&\(\)\;\"\'\?]/g;
 
 	//SalesForce Specific
 	this.salesForceRemotingMethod = null;
@@ -137,10 +137,11 @@ multiSelectJs.prototype.init = function(el, options) {
 
 	this.updateSelectedData();
 	
-	if(this.selections.length >= this.maxSelections) {
+	var selCount = this.selections.length;
+	if(selCount >= this.maxSelections) {
 		$(this.main).addClass("full");
 		this.hidePlaceholder();
-	}
+	} else if(selCount === 0) $(this.main).addClass("empty");
 	
 	this.setEventListeners();
 	
@@ -424,8 +425,6 @@ multiSelectJs.prototype.finishInputFocus = function(ev, selectAll) {
 			range.setEnd(firstChild, l);
 			selection.addRange(range);
 		}
-	} else {
-		
 	}
 	this.focusing = false;
 }
@@ -471,10 +470,10 @@ multiSelectJs.prototype.updateInputValue = function() {
 	var t = this.input;
 	
 	//Sanitize the contents	
-	var originalContent = $(t).text().trim();
+	var originalContent = $(t).text();
 	var newValue = originalContent.replace(this.forbiddenCharacters, "");
 	var lengthDifference = originalContent.length - newValue.length;
-	
+
 	//Get the current caret position
 	var pos = 0, containerEl = null, sel = window.getSelection(), range = null;
 	if(sel.rangeCount !== null && sel.rangeCount > 0) range = sel.getRangeAt(0);
@@ -589,6 +588,10 @@ multiSelectJs.prototype.inputKeyDown = function(ev) {
 	else if(key == 27) this.hideDropdown();
 	//Cannot select any more
 	else if(this.selections.length >= this.maxSelections) ev.preventDefault();
+	//Forbidden characters
+	else if(this.forbiddenCharacters.test(String.fromCharCode(key))) ev.preventDefault();
+	//Multiple trailing spaces
+	//else if(this.searchTerms !== null && this.searchTerms !== "" && this.searchTerms[this.searchTerms.length-1] === " " && key === 32) ev.preventDefault();
 }
 
 /**
@@ -662,7 +665,11 @@ multiSelectJs.prototype.updateSelectedData = function() {
 	}
 	
 	//Show input if more options can be selected
-	if(this.selections.length < this.maxSelections && $(this.main).hasClass("full")) $(this.main).removeClass("full").focus();
+	var selCount = this.selections.length;
+	if(selCount < this.maxSelections && $(this.main).hasClass("full")) $(this.main).removeClass("full").focus();
+	else if(selCount === 0) $(this.main).addClass("empty");
+	if(selCount > 0) $(this.main).removeClass("empty");
+	
 	this.updating = false;
 }
 
@@ -719,7 +726,10 @@ multiSelectJs.prototype.selectOption = function(optionReference) {
 			}
 		}
 		//Hide dropdown if the maximum number of selections has been reached
-		if(this.selections.length >= this.maxSelections) $(this.main).addClass("full");
+		var selCount = this.selections.length;
+		if(selCount >= this.maxSelections) $(this.main).addClass("full");
+		else if(selCount === 0) $(this.main).addClass("empty");
+		if(selCount > 0) $(this.main).removeClass("empty");
 		else this.showPlaceholder();
 		
 		//Empty the search box
@@ -994,9 +1004,6 @@ multiSelectJs.prototype.searchCallback = function(data) {
 	}
 	this.hasRequest = false;
 }
-
-
-
 
 /**
  *	Checks and updates the dropdown position if it is visible.  This is used on window resize and 

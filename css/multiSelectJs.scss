@@ -80,6 +80,11 @@ $disableBackground:	darken($backgroundColour, 5%);
 	color: $textColour;
 	text-align: left;
 	overflow: hidden;
+	cursor: text;
+	
+	line-height: 1.15; /* 2 */
+	-ms-text-size-adjust: 100%; /* 3 */
+	-webkit-text-size-adjust: 100%; /* 3 */
 	.selections {
 		display: inline;
 		@include noSelect();
@@ -91,6 +96,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 		padding: 3px 0;
 		max-width: 1px;
 		@include noSelect();
+		vertical-align: middle;
 	}
 	//The placeholder text
 	.multiSelectJs-placeholderText {
@@ -116,6 +122,8 @@ $disableBackground:	darken($backgroundColour, 5%);
 		border-radius: $selectionRadius;
 		cursor: default;
 		@include noSelect();
+		box-sizing: border-box;
+		vertical-align: middle;
 		.selectionText {
 			padding: 3px;
 			@include noSelect();
@@ -141,9 +149,7 @@ $disableBackground:	darken($backgroundColour, 5%);
 			}
 		}
 	}
-
 	.multiSelectJs-input {
-		//width: 10px;
 		min-width: 3px;
 		margin-left: 6px;
 		color: $textColour;
@@ -155,15 +161,28 @@ $disableBackground:	darken($backgroundColour, 5%);
 		-moz-user-select: text !important;
 		-ms-user-select: text !important;  
 		user-select: text !important;
+		vertical-align: middle;
 		&.empty {
 			display: inline-block;//Safari fix
+			box-sizing: border-box;
+			vertical-align: top;
+			padding-top: 7px;
 		}
-	}
-	@include noSelect();
-	cursor: text;
-	outline: none !important;
+	}	
 	&.full {
 		background-color: $disableBackground;
+		.multiSelectJs-input {
+			
+			&:before {
+				//visibility: visible;
+				//border-right: 2px solid #CCC;
+			}
+		}
+	}
+	&.empty {
+		.multiSelectJs-placeholderText {
+			display: none;
+		}
 	}
 	
 	.multiSelectJs-loader {
