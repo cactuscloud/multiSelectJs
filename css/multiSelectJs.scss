@@ -100,6 +100,9 @@ $disableBackground:	darken($backgroundColour, 5%);
 	}
 	//The placeholder text
 	.multiSelectJs-placeholderText {
+		position: absolute;
+		top: calc( 50% - 0.55em);
+		left: 10px;
 		white-space: nowrap;
 		max-width: 100%;
 		text-overflow: ellipsis;
